@@ -1,4 +1,4 @@
-# WebStore # WebStore 
+# WebStore
 ## Что такое WebStore?
  Это учебный проект, c взаимодействием WEB API REST написанный на C# с использованием ASP.NET Core
 
