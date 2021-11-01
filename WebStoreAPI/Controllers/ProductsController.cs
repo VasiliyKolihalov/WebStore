@@ -5,6 +5,7 @@ using WebStoreAPI.Models;
 using System.Collections.Generic;
 using System.Linq;
 using System.Threading.Tasks;
+using Microsoft.AspNetCore.Authorization;
 
 namespace WebStoreAPI.Controllers
 {
@@ -12,58 +13,63 @@ namespace WebStoreAPI.Controllers
     [ApiController]
     public class ProductsController : ControllerBase
     {
-        private readonly ProductsContext _productsDB;
+        private readonly ApplicationContext _applicationDB;
 
-        public ProductsController(ProductsContext productsContext)
+        public ProductsController(ApplicationContext productsContext)
         {
-            _productsDB = productsContext;
+            _applicationDB = productsContext;
         }
 
         [HttpGet]
         public ActionResult<IEnumerable<Product>> Get()
         {
-            return _productsDB.Products.ToList();
+            return _applicationDB.Products.ToList();
         }
 
         [HttpGet("{id}")]
         public ActionResult<Product> Get(int id)
         {
-            var product = _productsDB.Products.FirstOrDefault(x => x.Id == id);
+            var product = _applicationDB.Products.FirstOrDefault(x => x.Id == id);
             if (product == null) return NotFound();
             return new ObjectResult(product);
         }
 
+        [Authorize(Roles = "admin")]
         [HttpPost] 
         public ActionResult<Product> Post(Product product)
         {
-            if (product == null) return BadRequest();
-            _productsDB.Products.Add(product);
-            _productsDB.SaveChanges();
+            if (!ModelState.IsValid)
+                return BadRequest();
+         
+            _applicationDB.Products.Add(product);
+            _applicationDB.SaveChanges();
             return Ok(product);
         }
 
+        [Authorize(Roles = "admin")]
         [HttpPut]
         public ActionResult<Product> Put(Product product)
         {
             if (product == null) return BadRequest();
 
-            if(!_productsDB.Products.Any(x => x.Id == product.Id))
+            if(!_applicationDB.Products.Any(x => x.Id == product.Id))
             {
                 return NotFound();
             }
 
-            _productsDB.Update(product);
-            _productsDB.SaveChanges();
+            _applicationDB.Update(product);
+            _applicationDB.SaveChanges();
             return Ok(product);
         }
 
+        [Authorize(Roles = "admin")]
         [HttpDelete("{id}")]
         public ActionResult<Product> Delete(int id)
         {
-            var product = _productsDB.Products.FirstOrDefault(x => x.Id == id);
+            var product = _applicationDB.Products.FirstOrDefault(x => x.Id == id);
             if (product == null) return NotFound();
-            _productsDB.Remove(product);
-            _productsDB.SaveChanges();
+            _applicationDB.Remove(product);
+            _applicationDB.SaveChanges();
             return Ok(product);
         }
     }

@@ -4,6 +4,7 @@ using Microsoft.AspNetCore.Http;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Configuration;
+using Microsoft.AspNetCore.Identity;
 using System;
 using WebStoreAPI.Models;
 using System.Collections.Generic;
@@ -20,15 +21,22 @@ namespace WebStoreAPI
         public Startup(IConfiguration configuration)
         {
             var builder = new ConfigurationBuilder()
+                                    .AddJsonFile("adminsettings.json")
                                     .AddConfiguration(configuration);
             AppConfiguration = builder.Build();
         }
+
         public void ConfigureServices(IServiceCollection services)
         {
+            services.AddDbContext<ApplicationContext>(options =>
+            options.UseSqlServer(AppConfiguration.GetConnectionString("DeafultConnection")));
+
+            services.AddIdentity<User, IdentityRole>()
+                .AddEntityFrameworkStores<ApplicationContext>();
+
+            services.AddTransient<IConfiguration>(provider => AppConfiguration);
+
             services.AddControllers();
-            string connection = AppConfiguration.GetConnectionString("DeafultConnection");
-            services.AddDbContext<ProductsContext>(options => options.UseSqlServer(connection));
-            services.AddSingleton<ProductsCart>();
         }
 
         public void Configure(IApplicationBuilder app, IWebHostEnvironment env)
@@ -39,7 +47,9 @@ namespace WebStoreAPI
             }
 
             app.UseRouting();
-
+            app.UseAuthentication();
+            app.UseAuthorization();
+           
             app.UseEndpoints(endpoints =>
             {
                 endpoints.MapControllers();

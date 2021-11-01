@@ -1,6 +1,9 @@
 using Microsoft.AspNetCore.Hosting;
 using Microsoft.Extensions.Configuration;
+using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
+using Microsoft.AspNetCore.Identity;
+using WebStoreAPI.Models;
 using Microsoft.Extensions.Logging;
 using System;
 using System.Collections.Generic;
@@ -13,7 +16,17 @@ namespace WebStoreAPI
     {
         public static void Main(string[] args)
         {
-            CreateHostBuilder(args).Build().Run();
+            var host = CreateHostBuilder(args).Build();
+            using (var scope = host.Services.CreateScope())
+            {
+                var services = scope.ServiceProvider;
+                var userManager = services.GetService<UserManager<User>>();
+                var roleManager = services.GetService<RoleManager<IdentityRole>>();
+                var appConfiguration = services.GetService<IConfiguration>();
+                var logger = services.GetService<ILogger<Program>>();       
+                StartRoleInitializer.Initialize(userManager, roleManager, appConfiguration, logger);
+            }
+            host.Run();
         }
 
         public static IHostBuilder CreateHostBuilder(string[] args) =>
