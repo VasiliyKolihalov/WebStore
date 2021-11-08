@@ -16,5 +16,8 @@ namespace WebStoreAPI.Models
         public decimal Cost { get; set; }
         [Required]
         public string Description { get; set; }
+        [Min(0)]
+        public int QuantityInStock { get; set; }
+
     }
 }
