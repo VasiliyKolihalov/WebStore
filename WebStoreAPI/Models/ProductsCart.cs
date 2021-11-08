@@ -14,9 +14,9 @@ namespace WebStoreAPI.Models
         public List<ProductInCart> ProductsInCart { get; set; }
 
         [NotMapped]
-        public decimal ProductsCartCost { get => ProductsInCart.Sum(x => x.Cost); }
+        public List<ProductInCart> SelectedProductsInCart { get; set; }
         [NotMapped]
-        public int ProductsCount { get => ProductsInCart.Count; }
+        public decimal ProductsCartCost { get => ProductsInCart.Sum(x => x.Cost); }
 
         public ProductsCart()
         {

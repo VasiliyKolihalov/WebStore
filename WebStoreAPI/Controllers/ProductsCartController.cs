@@ -42,10 +42,11 @@ namespace WebStoreAPI.Controllers
         }
 
         private void InitializeProductsCart()
-        {
+        {   
             _productsCart.ProductsInCart = _applicationDB.ProductsInCarts.Where(x => x.ProductsCartId == _productsCart.Id).ToList();
+            _productsCart.SelectedProductsInCart = _productsCart.ProductsInCart.Where(x => x.Selected == true).ToList();
 
-            foreach(var productInCar in _productsCart.ProductsInCart)
+            foreach (var productInCar in _productsCart.ProductsInCart)
             {
                 productInCar.Product = _applicationDB.Products.Single(x => x.Id == productInCar.ProductId);
             }
@@ -68,12 +69,15 @@ namespace WebStoreAPI.Controllers
         [HttpPost("{id}")]
         public ActionResult<ProductsCart> Post(int id)
         {
-            SetProductsCart();
             var product = _applicationDB.Products.FirstOrDefault(x => x.Id == id);
 
             if (product == null)
                 return NotFound();
 
+            if (product.QuantityInStock < 1)
+                return NotFound();
+
+            SetProductsCart();
             InitializeProductsCart();
             ProductInCart productInCart = _productsCart.ProductsInCart.FirstOrDefault(x => x.ProductId == id);
 
@@ -126,13 +130,32 @@ namespace WebStoreAPI.Controllers
 
         }
 
-        [Route("buy")]
-        [HttpPost]
-        public ActionResult BuyCart()
+        [Route("select/{id}")]
+        [HttpPut]
+        public ActionResult<ProductInCart> SelectProduct(int id)
         {
             SetProductsCart();
             InitializeProductsCart();
-            if (_productsCart.ProductsCount < 1)
+
+            var productInCart = _applicationDB.ProductsInCarts.FirstOrDefault(x => x.ProductId == id &&
+                                                                        x.ProductsCartId == _productsCart.Id);
+
+            if (productInCart == null)
+                return BadRequest();
+
+            productInCart.Selected = !productInCart.Selected;
+            _applicationDB.ProductsInCarts.Update(productInCart);
+            _applicationDB.SaveChanges();
+            return Ok(productInCart);
+        }
+
+        [Route("buy")]
+        [HttpPost]
+        public ActionResult<IEnumerable<ProductInCart>> BuySelectedProducts()
+        {
+            SetProductsCart();
+            InitializeProductsCart();
+            if (_productsCart.SelectedProductsInCart.Count < 1)
                 return BadRequest();
 
             string companyName = _appConfiguration["CompanyDate:Name"];
@@ -148,7 +171,7 @@ namespace WebStoreAPI.Controllers
             {
                 cartcost = _productsCart.ProductsCartCost,
                 username = _currentUser.UserName,
-                productsincart = _productsCart.ProductsInCart
+                productsincart = _productsCart.SelectedProductsInCart
             });
 
             MailMessage message = new MailMessage(from, to)
@@ -164,9 +187,14 @@ namespace WebStoreAPI.Controllers
                 EnableSsl = true
             };
             smtp.SendMailAsync(message).Wait();
-            _applicationDB.ProductsInCarts.RemoveRange(_productsCart.ProductsInCart);
+            foreach(var productInCart in _productsCart.SelectedProductsInCart)
+            {
+                productInCart.Product.QuantityInStock -= productInCart.Count;
+                _applicationDB.ProductsInCarts.Remove(productInCart);
+            }
+        
             _applicationDB.SaveChanges();
-            return Ok();
+            return Ok(_productsCart.SelectedProductsInCart);
         }
 
     }

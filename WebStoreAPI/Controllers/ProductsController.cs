@@ -50,7 +50,8 @@ namespace WebStoreAPI.Controllers
         [HttpPut]
         public ActionResult<Product> Put(Product product)
         {
-            if (product == null) return BadRequest();
+            if (!ModelState.IsValid) 
+                return BadRequest();
 
             if(!_applicationDB.Products.Any(x => x.Id == product.Id))
             {
