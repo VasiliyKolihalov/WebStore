@@ -4,7 +4,7 @@
     <h2> Спасибо за покупку на сумму {{cartcost | math.format "c" "ru-RU"}}, {{username}}</h2>
     <h3> Вами были куплены следующие товары:</h3>
     {{for productincart in productsincart}}
-<h3>{{productincart.product.name}} в колличестве {{productincart.count}}шт ценой {{productincart.cost | math.format "c" "ru-RU"}}</h3>
+    <h3>{{productincart.product.name}} в колличестве {{productincart.count}}шт ценой {{productincart.cost | math.format "c" "ru-RU"}}</h3>      
     {{end}}
 </body>
 </html>
