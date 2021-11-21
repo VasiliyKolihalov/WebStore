@@ -12,6 +12,7 @@ using System.Threading.Tasks;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc.Razor;
+using AutoMapper;
 using System.Net;
 using Microsoft.AspNetCore.Html;
 
@@ -35,21 +36,15 @@ namespace WebStoreAPI.Controllers
             _appConfiguration = appConfiguration;
         }
 
-        private void SetProductsCart()
-        {
-            SetUser();
-            _productsCart = _applicationDB.ProductsCarts.Single(x => x.UserId == _currentUser.Id);
-        }
-
         private void InitializeProductsCart()
-        {   
-            _productsCart.ProductsInCart = _applicationDB.ProductsInCarts.Where(x => x.ProductsCartId == _productsCart.Id).ToList();
-            _productsCart.SelectedProductsInCart = _productsCart.ProductsInCart.Where(x => x.Selected == true).ToList();
+        {
+            _productsCart = _applicationDB.ProductsCarts.Single(x => x.UserId == _currentUser.Id);
 
-            foreach (var productInCar in _productsCart.ProductsInCart)
-            {
-                productInCar.Product = _applicationDB.Products.Single(x => x.Id == productInCar.ProductId);
-            }
+            _productsCart.ProductsInCart = _applicationDB.ProductsInCarts
+                                                .Include(x => x.Product)
+                                                .Include(x => x.ProductsCarts)
+                                                .Where(x => x.ProductsCarts.FirstOrDefault(x => x.Id == _productsCart.Id) != null)
+                                                .ToList();                                
         }
 
         private void SetUser()
@@ -58,16 +53,26 @@ namespace WebStoreAPI.Controllers
         }
 
         [HttpGet]
-        public ActionResult<ProductsCart> Get()
+        public ActionResult<ProductsCartViewModel> Get()
         {
-            SetProductsCart();
+            SetUser();
             InitializeProductsCart();
-            return _productsCart;
+            var mapperConfig = new MapperConfiguration(cfg => 
+            {
+                cfg.CreateMap<ProductsCart, ProductsCartViewModel>();
+                cfg.CreateMap<ProductInCart, ProductInCartViewModel>();
+                cfg.CreateMap<Product, ProductViewModel>();
+            });
+            var mapper = new Mapper(mapperConfig);
+
+            var productsCartView = mapper.Map<ProductsCart, ProductsCartViewModel>(_productsCart);
+
+            return productsCartView;
         }
 
 
         [HttpPost("{id}")]
-        public ActionResult<ProductsCart> Post(int id)
+        public ActionResult<ProductInCartViewModel> Post(long id)
         {
             var product = _applicationDB.Products.FirstOrDefault(x => x.Id == id);
 
@@ -77,9 +82,16 @@ namespace WebStoreAPI.Controllers
             if (product.QuantityInStock < 1)
                 return NotFound();
 
-            SetProductsCart();
+            SetUser();
             InitializeProductsCart();
-            ProductInCart productInCart = _productsCart.ProductsInCart.FirstOrDefault(x => x.ProductId == id);
+            ProductInCart productInCart = _productsCart.ProductsInCart.FirstOrDefault(x => x.Product.Id == id);
+
+            var mapperConfig = new MapperConfiguration(cgf => 
+            {
+                cgf.CreateMap<ProductInCart, ProductInCartViewModel>();
+                cgf.CreateMap<Product, ProductViewModel>();
+            });
+            var mapper = new Mapper(mapperConfig);
 
             if (productInCart != null)
             {
@@ -87,91 +99,119 @@ namespace WebStoreAPI.Controllers
                 productInCart.Cost += product.Cost;
                 _applicationDB.ProductsInCarts.Update(productInCart);
                 _applicationDB.SaveChanges();
-                InitializeProductsCart();
-                return _productsCart;
+
+                var productInCatrView = mapper.Map<ProductInCart, ProductInCartViewModel>(productInCart);
+                return Ok(productInCatrView);
             }
             else
             {
-                productInCart = new ProductInCart() { ProductId = id, ProductsCartId = _productsCart.Id, Cost = product.Cost };
+                productInCart = new ProductInCart() {  Cost = product.Cost, Product = product};
                 _applicationDB.ProductsInCarts.Add(productInCart);
+                _productsCart.ProductsInCart.Add(productInCart);
                 _applicationDB.SaveChanges();
-                InitializeProductsCart();
-                return _productsCart;
+
+                var productInCatrView = mapper.Map<ProductInCart, ProductInCartViewModel>(productInCart);
+                return Ok(productInCatrView);
 
             }
         }
 
         [HttpDelete("{id}")]
-        public ActionResult<ProductsCart> Delete(int id)
+        public ActionResult<ProductInCartViewModel> Delete(long id)
         {
-            SetProductsCart();
+            SetUser();
             InitializeProductsCart();
 
-            ProductInCart productInCart = _productsCart.ProductsInCart.FirstOrDefault(x => x.ProductId == id);
+            ProductInCart productInCart = _productsCart.ProductsInCart.FirstOrDefault(x => x.Product.Id == id);
 
             if (productInCart == null)
                 return NotFound();
+
+            var mapperConfig = new MapperConfiguration(cgf =>
+            {
+                cgf.CreateMap<ProductInCart, ProductInCartViewModel>();
+                cgf.CreateMap<Product, ProductViewModel>();
+            });
+            var mapper = new Mapper(mapperConfig);
 
             if (productInCart.Count > 1)
             {
                 productInCart.Count--;
                 _applicationDB.ProductsInCarts.Update(productInCart);
                 _applicationDB.SaveChanges();
-                InitializeProductsCart();
-                return _productsCart;
+
+                var productInCatrView = mapper.Map<ProductInCart, ProductInCartViewModel>(productInCart);
+                return Ok(productInCatrView);
             }
             else
             {
                 _applicationDB.ProductsInCarts.Remove(productInCart);
                 _applicationDB.SaveChanges();
-                InitializeProductsCart();
-                return _productsCart;
+
+                var productInCatrView = mapper.Map<ProductInCart, ProductInCartViewModel>(productInCart);
+                return Ok(productInCatrView);
             }
 
         }
 
         [Route("select/{id}")]
         [HttpPut]
-        public ActionResult<ProductInCart> SelectProduct(int id)
+        public ActionResult<ProductInCartViewModel> SelectProduct(long id)
         {
-            SetProductsCart();
+            SetUser();
             InitializeProductsCart();
 
-            var productInCart = _applicationDB.ProductsInCarts.FirstOrDefault(x => x.ProductId == id &&
-                                                                        x.ProductsCartId == _productsCart.Id);
+            var productInCart = _applicationDB.ProductsInCarts.FirstOrDefault(x => x.Product.Id == id &&
+                                                                        x.ProductsCarts.FirstOrDefault(x => x.Id == _productsCart.Id) != null);
 
             if (productInCart == null)
+                return NotFound();
+
+            if (productInCart.CanBuy == false)
                 return BadRequest();
 
             productInCart.Selected = !productInCart.Selected;
             _applicationDB.ProductsInCarts.Update(productInCart);
             _applicationDB.SaveChanges();
-            return Ok(productInCart);
+
+            var mapperConfig = new MapperConfiguration(cgf =>
+            {
+                cgf.CreateMap<ProductInCart, ProductInCartViewModel>();
+                cgf.CreateMap<Product, ProductViewModel>();
+            });
+            var mapper = new Mapper(mapperConfig);
+
+            var productInCatrView = mapper.Map<ProductInCart, ProductInCartViewModel>(productInCart);
+            return Ok(productInCatrView);
         }
 
         [Route("buy")]
         [HttpPost]
-        public ActionResult<IEnumerable<ProductInCart>> BuySelectedProducts()
+        public ActionResult<IEnumerable<ProductInCartViewModel>> BuySelectedProducts()
         {
-            SetProductsCart();
+            SetUser();
             InitializeProductsCart();
-            if (_productsCart.SelectedProductsInCart.Count < 1)
+
+            var selectedProductsInCart = _productsCart.ProductsInCart.Where(x => x.Selected == true).ToList();
+
+            if (selectedProductsInCart.Count < 1 ||
+                selectedProductsInCart.FirstOrDefault(x => x.CanBuy == false) != null)
                 return BadRequest();
 
-            string companyName = _appConfiguration["CompanyDate:Name"];
-            string companyEmail = _appConfiguration["CompanyDate:Email"];
-            string companyPassword = _appConfiguration["CompanyDate:EmailPassword"];
+            string companyName = _appConfiguration["CompanyData:Name"];
+            string companyEmail = _appConfiguration["CompanyData:Email"];
+            string companyPassword = _appConfiguration["CompanyData:EmailPassword"];
 
             MailAddress from = new MailAddress(companyEmail, companyName);
             MailAddress to = new MailAddress(_currentUser.Email);
-
+         
             string htmlString = System.IO.File.ReadAllText("Views/PurchaseEmail.html");
             var template = Template.Parse(htmlString);
             string result = template.Render(new
             {
                 cartcost = _productsCart.ProductsCartCost,
                 username = _currentUser.UserName,
-                productsincart = _productsCart.SelectedProductsInCart
+                productsincart = selectedProductsInCart
             });
 
             MailMessage message = new MailMessage(from, to)
@@ -187,14 +227,24 @@ namespace WebStoreAPI.Controllers
                 EnableSsl = true
             };
             smtp.SendMailAsync(message).Wait();
-            foreach(var productInCart in _productsCart.SelectedProductsInCart)
+            foreach (var productInCart in selectedProductsInCart)
             {
                 productInCart.Product.QuantityInStock -= productInCart.Count;
                 _applicationDB.ProductsInCarts.Remove(productInCart);
             }
-        
+
             _applicationDB.SaveChanges();
-            return Ok(_productsCart.SelectedProductsInCart);
+
+            var mapperConfig = new MapperConfiguration(cgf =>
+            {
+                cgf.CreateMap<ProductInCart, ProductInCartViewModel>();
+                cgf.CreateMap<Product, ProductViewModel>();
+            });
+            var mapper = new Mapper(mapperConfig);
+
+            var selectedProductInCarViews = mapper.Map<List<ProductInCart>, List<ProductInCartViewModel>>(selectedProductsInCart);
+
+            return Ok(selectedProductInCarViews);
         }
 
     }
