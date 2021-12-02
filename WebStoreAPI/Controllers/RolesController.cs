@@ -22,13 +22,11 @@ namespace WebStoreAPI.Controllers
             _roleManager = roleManager;
         }
 
-
         [HttpGet]
-        public ActionResult<IEnumerable<IdentityRole>> Get()
+        public ActionResult<IEnumerable<IdentityRole>> GetAll()
         {
             return _roleManager.Roles.ToList();
         }
-
 
         [HttpPost("{name}")]
         public ActionResult<IdentityRole> Create(string name)
@@ -76,6 +74,5 @@ namespace WebStoreAPI.Controllers
                 return BadRequest(ModelState);
             }
         }
-
     }
 }

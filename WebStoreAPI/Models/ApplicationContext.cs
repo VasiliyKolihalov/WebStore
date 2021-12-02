@@ -14,6 +14,7 @@ namespace WebStoreAPI.Models
         public DbSet<ProductsCart> ProductsCarts { get; set; }
         public DbSet<ProductInCart> ProductsInCarts { get; set; }
         public DbSet<Image> Images { get; set; }
+        public DbSet<Category> Categories { get; set; }
 
         public ApplicationContext(DbContextOptions<ApplicationContext> options) : base(options)
         {

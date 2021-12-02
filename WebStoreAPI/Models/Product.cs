@@ -13,11 +13,12 @@ namespace WebStoreAPI.Models
         public string Description { get; set; }
         public int QuantityInStock { get; set; }
         public List<Image> Images { get; set; }
+        public List<Category> Categories { get; set; }
 
         public Product()
         {
             Images = new List<Image>();
+            Categories = new List<Category>();
         }
-
     }
 }
