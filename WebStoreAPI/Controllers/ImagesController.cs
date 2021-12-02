@@ -28,7 +28,8 @@ namespace WebStoreAPI.Controllers
             var images = _applicationDB.Images;
 
             var mapperConfig = new MapperConfiguration(cfg => cfg.CreateMap<Image, Base64ImageViewModel>()
-                                   .ForMember("ImageData", opt => opt.MapFrom(x => Convert.ToBase64String(x.ImageData))));
+                                                                 .ForMember("ImageData", opt => opt
+                                                                 .MapFrom(x => Convert.ToBase64String(x.ImageData))));
 
             var mapper = new Mapper(mapperConfig);
 
@@ -45,9 +46,9 @@ namespace WebStoreAPI.Controllers
             if (image == null)
                 return NotFound();
 
-
             var mapperConfig = new MapperConfiguration(cfg => cfg.CreateMap<Image, Base64ImageViewModel>()
-                                   .ForMember("ImageData", opt => opt.MapFrom(x => Convert.ToBase64String(x.ImageData))));
+                                                                 .ForMember("ImageData", opt => opt
+                                                                 .MapFrom(x => Convert.ToBase64String(x.ImageData))));
             var mapper = new Mapper(mapperConfig);
 
             var base64ImageView = mapper.Map<Image, Base64ImageViewModel>(image);
@@ -72,7 +73,15 @@ namespace WebStoreAPI.Controllers
 
             var mapper = new Mapper(mapperConfig);
 
-            Image image = mapper.Map<Base64ImageAddModel, Image>(imageAddModel);
+            Image image;
+            try
+            {
+                image = mapper.Map<Base64ImageAddModel, Image>(imageAddModel);
+            }
+            catch
+            {
+                return BadRequest("base64 conversion error");
+            }
 
             _applicationDB.Images.Add(image);
             _applicationDB.SaveChanges();
@@ -92,10 +101,19 @@ namespace WebStoreAPI.Controllers
                 return NotFound();
 
             var mapperConfig = new MapperConfiguration(cfg => cfg.CreateMap<Base64ImageViewModel, Image>()
-                                   .ForMember("ImageData", opt => opt.MapFrom(x => Convert.FromBase64String(x.ImageData))));
+                                                                 .ForMember("ImageData", opt => opt
+                                                                 .MapFrom(x => Convert.FromBase64String(x.ImageData))));
             var mapper = new Mapper(mapperConfig);
 
-            var image = mapper.Map<Base64ImageViewModel, Image>(imageViewModel);
+            Image image;
+            try
+            {
+                image = mapper.Map<Base64ImageViewModel, Image>(imageViewModel);
+            }
+            catch
+            {
+                return BadRequest("base64 conversion error");
+            }
 
             _applicationDB.Images.Update(image);
             _applicationDB.SaveChanges();
@@ -115,7 +133,8 @@ namespace WebStoreAPI.Controllers
             _applicationDB.SaveChanges();
 
             var mapperConfig = new MapperConfiguration(cfg => cfg.CreateMap<Image, Base64ImageViewModel>()
-                                  .ForMember("ImageData", opt => opt.MapFrom(x => Convert.ToBase64String(x.ImageData))));
+                                                                 .ForMember("ImageData", opt => opt
+                                                                 .MapFrom(x => Convert.ToBase64String(x.ImageData))));
             var mapper = new Mapper(mapperConfig);
 
             var base64ImageView = mapper.Map<Image, Base64ImageViewModel>(image);

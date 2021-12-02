@@ -23,7 +23,7 @@ namespace WebStoreAPI.Controllers
         }
 
         [HttpGet]
-        public ActionResult<IEnumerable<ProductViewModel>> Get()
+        public ActionResult<IEnumerable<ProductViewModel>> GetAll()
         {
             var products = _applicationDB.Products;
 
@@ -54,6 +54,7 @@ namespace WebStoreAPI.Controllers
 
         }
 
+
         [Authorize(Roles = "admin")]
         [HttpPost]
         public ActionResult<ProductViewModel> Post(ProductAddModel productAddModel)
@@ -80,26 +81,6 @@ namespace WebStoreAPI.Controllers
         }
 
         [Authorize(Roles = "admin")]
-        [HttpPut]
-        public ActionResult<ProductViewModel> Put(ProductViewModel productView)
-        {
-            if (!ModelState.IsValid)
-                return BadRequest();
-
-            if (!_applicationDB.Products.Any(x => x.Id == productView.Id))
-                return NotFound();
-
-            var mapperConfig = new MapperConfiguration(cfg =>cfg.CreateMap<ProductViewModel, Product>());
-            var mapper = new Mapper(mapperConfig);
-
-            var product = mapper.Map<ProductViewModel, Product>(productView);
-
-            _applicationDB.Products.Update(product);
-            _applicationDB.SaveChanges();
-            return Ok(productView);
-        }
-
-        [Authorize(Roles = "admin")]
         [HttpDelete("{id}")]
         public ActionResult<ProductViewModel> Delete(long id)
         {
@@ -107,6 +88,7 @@ namespace WebStoreAPI.Controllers
 
             if (product == null)
                 return NotFound();
+
             _applicationDB.Products.Remove(product);
             _applicationDB.SaveChanges();
 
@@ -119,28 +101,144 @@ namespace WebStoreAPI.Controllers
             return Ok(productView);
         }
 
+        [Authorize(Roles = "admin")]
+        [HttpPut]
+        public ActionResult<ProductViewModel> Put(ProductViewModel productView)
+        {
+            if (!ModelState.IsValid)
+                return BadRequest();
+
+            if (!_applicationDB.Products.Any(x => x.Id == productView.Id))
+                return NotFound();
+
+            var mapperConfig = new MapperConfiguration(cfg => cfg.CreateMap<ProductViewModel, Product>());
+            var mapper = new Mapper(mapperConfig);
+
+            var product = mapper.Map<ProductViewModel, Product>(productView);
+
+            _applicationDB.Products.Update(product);
+            _applicationDB.SaveChanges();
+
+            return Ok(productView);
+        }
+
+        #region product categories
+
+        [Route("getbasedcategory/{categoryId}")]
+        [HttpGet]
+        public ActionResult<IEnumerable<ProductViewModel>> GetBasedCategory(int categoryId)
+        {
+            var category = _applicationDB.Categories.FirstOrDefault(x => x.Id == categoryId);
+
+            if (category == null)
+                return NotFound();
+
+            var products = _applicationDB.Products.Where(x => x.Categories.FirstOrDefault(x => x.Id == categoryId) != null);
+
+            var mapperConfig = new MapperConfiguration(cfg => cfg.CreateMap<Product, ProductViewModel>());
+            var mapper = new Mapper(mapperConfig);
+
+            var productsViews = mapper.Map<IEnumerable<Product>, List<ProductViewModel>>(products);
+
+            return productsViews;
+
+        }
+
+        [Route("{productId}/getcategories")]
+        [HttpGet]
+        public ActionResult<IEnumerable<CategoryViewModel>> GetCategories(long productId)
+        {
+            var product = _applicationDB.Products.FirstOrDefault(x => x.Id == productId);
+
+            if (product == null)
+                return NotFound();
+
+            var categories = _applicationDB.Categories.Include(x => x.Parent)
+                                                      .Include(x => x.Products)
+                                                      .Where(x => x.Products.FirstOrDefault(x => x.Id == productId) != null);
+
+            var mapperConfig = new MapperConfiguration(cfg => cfg.CreateMap<Category, CategoryViewModel>()
+                                                                 .ForMember("ParentId", opt => opt.MapFrom(x => x.Parent.Id)));
+            var mapper = new Mapper(mapperConfig);
+
+            var categoryViews = mapper.Map<IEnumerable<Category>, List<CategoryViewModel>>(categories);
+
+            return categoryViews;
+        }
 
         [Authorize(Roles = "admin")]
+        [Route("{productId}/addcategory/{categoryId}")]
+        [HttpPost]
+        public ActionResult<CategoryViewModel> AddCategory(int productId, int categoryId)
+        {
+            var category = _applicationDB.Categories.Include(x => x.Parent).FirstOrDefault(x => x.Id == categoryId);
+            var product = _applicationDB.Products.Include(x => x.Categories).FirstOrDefault(x => x.Id == productId);
+
+            if (category == null || product == null)
+                return NotFound();
+
+            if (product.Categories.Contains(category))
+                return BadRequest();
+
+            product.Categories.Add(category);
+
+            _applicationDB.Products.Update(product);
+            _applicationDB.SaveChanges();
+
+            var mapperConfig = new MapperConfiguration(cfg => cfg.CreateMap<Category, CategoryViewModel>()
+                                                                 .ForMember("ParentId", opt => opt.MapFrom(x => x.Parent.Id)));
+            var mapper = new Mapper(mapperConfig);
+
+            var categoryView = mapper.Map<Category, CategoryViewModel>(category);
+
+            return Ok(categoryView);
+        }
+
+        [Authorize(Roles = "admin")]
+        [Route("{productId}/removecategory/{categoryId}")]
+        [HttpDelete]
+        public ActionResult<CategoryViewModel> RemoveCategory(int productId, int categoryId)
+        {
+            var category = _applicationDB.Categories.Include(x => x.Parent).FirstOrDefault(x => x.Id == categoryId);
+            var product = _applicationDB.Products.Include(x => x.Categories).FirstOrDefault(x => x.Id == productId);
+            if (category == null || product == null || !product.Categories.Contains(category))
+                return NotFound();
+
+            product.Categories.Remove(category);
+
+            _applicationDB.Products.Update(product);
+            _applicationDB.SaveChanges();
+
+            var mapperConfig = new MapperConfiguration(cfg => cfg.CreateMap<Category, CategoryViewModel>()
+                                                                 .ForMember("ParentId", opt => opt.MapFrom(x => x.Parent.Id)));
+            var mapper = new Mapper(mapperConfig);
+
+            var categoryView = mapper.Map<Category, CategoryViewModel>(category);
+
+            return Ok(categoryView);
+        }
+
+        #endregion 
+
+        #region product images
+
         [Route("{productId}/getimages")]
         [HttpGet]
         public ActionResult<IEnumerable<Base64ImageViewModel>> GetImages(long productId)
         {
-            var Images = _applicationDB.Images.Include(x => x.Products);
+            var product = _applicationDB.Products.FirstOrDefault(x => x.Id == productId);
 
+            if (product == null)
+                return NotFound();
+
+            var images = _applicationDB.Images.Where(x => x.Products.FirstOrDefault(x => x.Id == productId) != null);
             var base64ImageViews = new List<Base64ImageViewModel>();
-            var mapperConfig = new MapperConfiguration(cfg => cfg.CreateMap<Image, Base64ImageViewModel>()
-                                  .ForMember("ImageData", opt => opt.MapFrom(x => Convert.ToBase64String(x.ImageData))));
 
+            var mapperConfig = new MapperConfiguration(cfg => cfg.CreateMap<Image, Base64ImageViewModel>()
+                                   .ForMember("ImageData", opt => opt.MapFrom(x => Convert.ToBase64String(x.ImageData))));
             var mapper = new Mapper(mapperConfig);
 
-            foreach (var image in Images)
-            {
-                if (image.Products.FirstOrDefault(x => x.Id == productId) != null)
-                {
-                    base64ImageViews.Add(mapper.Map<Image, Base64ImageViewModel>(image));
-                }
-            }
-
+            base64ImageViews = mapper.Map<IEnumerable<Image>, List<Base64ImageViewModel>>(images);
             return base64ImageViews;
         }
 
@@ -150,10 +248,13 @@ namespace WebStoreAPI.Controllers
         public ActionResult<Base64ImageViewModel> AddImage(long productId, long imageId)
         {
             var image = _applicationDB.Images.FirstOrDefault(x => x.Id == imageId);
-            var product = _applicationDB.Products.FirstOrDefault(x => x.Id == productId);
+            var product = _applicationDB.Products.Include(x => x.Images).FirstOrDefault(x => x.Id == productId);
 
             if (image == null || product == null)
                 return NotFound();
+
+            if (product.Images.Contains(image))
+                return BadRequest();
 
             product.Images.Add(image);
 
@@ -161,7 +262,8 @@ namespace WebStoreAPI.Controllers
             _applicationDB.SaveChanges();
 
             var mapperConfig = new MapperConfiguration(cfg => cfg.CreateMap<Image, Base64ImageViewModel>()
-                                   .ForMember("ImageData", opt => opt.MapFrom(x => Convert.ToBase64String(x.ImageData))));
+                                                                 .ForMember("ImageData", opt => opt
+                                                                 .MapFrom(x => Convert.ToBase64String(x.ImageData))));
             var mapper = new Mapper(mapperConfig);
 
             var base64ImageView = mapper.Map<Image, Base64ImageViewModel>(image);
@@ -170,9 +272,9 @@ namespace WebStoreAPI.Controllers
         }
 
         [Authorize(Roles = "admin")]
-        [Route("{productId}/deleteimage/{imageId}")]
+        [Route("{productId}/removeimage/{imageId}")]
         [HttpDelete]
-        public ActionResult<Base64ImageViewModel> DeleteImage(long productId, long imageId)
+        public ActionResult<Base64ImageViewModel> RemoveImage(long productId, long imageId)
         {
             var image = _applicationDB.Images.FirstOrDefault(x => x.Id == imageId);
             var product = _applicationDB.Products.Include(x => x.Images).FirstOrDefault(x => x.Id == productId);
@@ -185,13 +287,16 @@ namespace WebStoreAPI.Controllers
             _applicationDB.SaveChanges();
 
             var mapperConfig = new MapperConfiguration(cfg => cfg.CreateMap<Image, Base64ImageViewModel>()
-                                   .ForMember("ImageData", opt => opt.MapFrom(x => Convert.ToBase64String(x.ImageData))));
+                                                                 .ForMember("ImageData", opt => opt
+                                                                 .MapFrom(x => Convert.ToBase64String(x.ImageData))));
             var mapper = new Mapper(mapperConfig);
 
             var base64ImageView = mapper.Map<Image, Base64ImageViewModel>(image);
 
             return Ok(base64ImageView);
         }
+        #endregion
+
     }
 
 }

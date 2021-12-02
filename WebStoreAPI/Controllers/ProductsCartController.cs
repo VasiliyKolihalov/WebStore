@@ -41,10 +41,10 @@ namespace WebStoreAPI.Controllers
             _productsCart = _applicationDB.ProductsCarts.Single(x => x.UserId == _currentUser.Id);
 
             _productsCart.ProductsInCart = _applicationDB.ProductsInCarts
-                                                .Include(x => x.Product)
-                                                .Include(x => x.ProductsCarts)
-                                                .Where(x => x.ProductsCarts.FirstOrDefault(x => x.Id == _productsCart.Id) != null)
-                                                .ToList();                                
+                                                         .Include(x => x.Product)
+                                                         .Include(x => x.ProductsCarts)
+                                                         .Where(x => x.ProductsCarts.FirstOrDefault(x => x.Id == _productsCart.Id) != null)
+                                                         .ToList();                                
         }
 
         private void SetUser()
@@ -72,7 +72,7 @@ namespace WebStoreAPI.Controllers
 
 
         [HttpPost("{id}")]
-        public ActionResult<ProductInCartViewModel> Post(long id)
+        public ActionResult<ProductInCartViewModel> AddProduct(long id)
         {
             var product = _applicationDB.Products.FirstOrDefault(x => x.Id == id);
 
@@ -117,7 +117,7 @@ namespace WebStoreAPI.Controllers
         }
 
         [HttpDelete("{id}")]
-        public ActionResult<ProductInCartViewModel> Delete(long id)
+        public ActionResult<ProductInCartViewModel> DeleteProduct(long id)
         {
             SetUser();
             InitializeProductsCart();
@@ -162,7 +162,7 @@ namespace WebStoreAPI.Controllers
             InitializeProductsCart();
 
             var productInCart = _applicationDB.ProductsInCarts.FirstOrDefault(x => x.Product.Id == id &&
-                                                                        x.ProductsCarts.FirstOrDefault(x => x.Id == _productsCart.Id) != null);
+                                                                                   x.ProductsCarts.FirstOrDefault(x => x.Id == _productsCart.Id) != null);
 
             if (productInCart == null)
                 return NotFound();
