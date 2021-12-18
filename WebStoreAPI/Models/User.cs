@@ -13,7 +13,7 @@ namespace WebStoreAPI.Models
 
         public User()
         {
-            ProductsCart = new ProductsCart(); 
+            ProductsCart = new ProductsCart();
         }
     }
 }

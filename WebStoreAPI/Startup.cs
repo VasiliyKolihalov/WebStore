@@ -24,6 +24,7 @@ namespace WebStoreAPI
                                     .AddJsonFile("adminsettings.json")
                                     .AddJsonFile("companysettings.json")
                                     .AddConfiguration(configuration);
+
             AppConfiguration = builder.Build();
         }
 

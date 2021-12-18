@@ -24,7 +24,7 @@ namespace WebStoreAPI.Controllers
     public class ProductsCartController : ControllerBase
     {
         private ProductsCart _productsCart;
-        private User _currentUser;
+        private User _user;
         private readonly IConfiguration _appConfiguration;
         private readonly ApplicationContext _applicationDB;
         private readonly UserManager<User> _userManager;
@@ -38,10 +38,10 @@ namespace WebStoreAPI.Controllers
 
         private void InitializeProductsCart()
         {
-            _productsCart = _applicationDB.ProductsCarts.Single(x => x.UserId == _currentUser.Id);
+            _productsCart = _applicationDB.ProductsCarts.Single(x => x.UserId == _user.Id);
 
             _productsCart.ProductsInCart = _applicationDB.ProductsInCarts
-                                                         .Include(x => x.Product)
+                                                         .Include(x => x.Product.Store)
                                                          .Include(x => x.ProductsCarts)
                                                          .Where(x => x.ProductsCarts.FirstOrDefault(x => x.Id == _productsCart.Id) != null)
                                                          .ToList();                                
@@ -49,7 +49,7 @@ namespace WebStoreAPI.Controllers
 
         private void SetUser()
         {
-            _currentUser = _userManager.GetUserAsync(HttpContext.User).Result;
+            _user = _userManager.GetUserAsync(HttpContext.User).Result;
         }
 
         [HttpGet]
@@ -60,14 +60,16 @@ namespace WebStoreAPI.Controllers
             var mapperConfig = new MapperConfiguration(cfg => 
             {
                 cfg.CreateMap<ProductsCart, ProductsCartViewModel>();
+                cfg.CreateMap<User, UserViewModel>().ForMember(nameof(UserViewModel.Name), opt => opt.MapFrom(x => x.UserName));
                 cfg.CreateMap<ProductInCart, ProductInCartViewModel>();
                 cfg.CreateMap<Product, ProductViewModel>();
+                cfg.CreateMap<Store, StorePutModel>();
             });
             var mapper = new Mapper(mapperConfig);
 
-            var productsCartView = mapper.Map<ProductsCart, ProductsCartViewModel>(_productsCart);
+            var productsCartViewModel = mapper.Map<ProductsCart, ProductsCartViewModel>(_productsCart);
 
-            return productsCartView;
+            return productsCartViewModel;
         }
 
 
@@ -86,10 +88,11 @@ namespace WebStoreAPI.Controllers
             InitializeProductsCart();
             ProductInCart productInCart = _productsCart.ProductsInCart.FirstOrDefault(x => x.Product.Id == id);
 
-            var mapperConfig = new MapperConfiguration(cgf => 
+            var mapperConfig = new MapperConfiguration(cfg => 
             {
-                cgf.CreateMap<ProductInCart, ProductInCartViewModel>();
-                cgf.CreateMap<Product, ProductViewModel>();
+                cfg.CreateMap<ProductInCart, ProductInCartViewModel>();
+                cfg.CreateMap<Product, ProductViewModel>();
+                cfg.CreateMap<Store, StorePutModel>();
             });
             var mapper = new Mapper(mapperConfig);
 
@@ -100,8 +103,8 @@ namespace WebStoreAPI.Controllers
                 _applicationDB.ProductsInCarts.Update(productInCart);
                 _applicationDB.SaveChanges();
 
-                var productInCatrView = mapper.Map<ProductInCart, ProductInCartViewModel>(productInCart);
-                return Ok(productInCatrView);
+                var productInCatrViewModel = mapper.Map<ProductInCart, ProductInCartViewModel>(productInCart);
+                return Ok(productInCatrViewModel);
             }
             else
             {
@@ -110,8 +113,8 @@ namespace WebStoreAPI.Controllers
                 _productsCart.ProductsInCart.Add(productInCart);
                 _applicationDB.SaveChanges();
 
-                var productInCatrView = mapper.Map<ProductInCart, ProductInCartViewModel>(productInCart);
-                return Ok(productInCatrView);
+                var productInCatrViewModel = mapper.Map<ProductInCart, ProductInCartViewModel>(productInCart);
+                return Ok(productInCatrViewModel);
 
             }
         }
@@ -127,10 +130,11 @@ namespace WebStoreAPI.Controllers
             if (productInCart == null)
                 return NotFound();
 
-            var mapperConfig = new MapperConfiguration(cgf =>
+            var mapperConfig = new MapperConfiguration(cfg =>
             {
-                cgf.CreateMap<ProductInCart, ProductInCartViewModel>();
-                cgf.CreateMap<Product, ProductViewModel>();
+                cfg.CreateMap<ProductInCart, ProductInCartViewModel>();
+                cfg.CreateMap<Product, ProductViewModel>();
+                cfg.CreateMap<Store, StorePutModel>();
             });
             var mapper = new Mapper(mapperConfig);
 
@@ -148,8 +152,8 @@ namespace WebStoreAPI.Controllers
                 _applicationDB.ProductsInCarts.Remove(productInCart);
                 _applicationDB.SaveChanges();
 
-                var productInCatrView = mapper.Map<ProductInCart, ProductInCartViewModel>(productInCart);
-                return Ok(productInCatrView);
+                var productInCatrViewModel = mapper.Map<ProductInCart, ProductInCartViewModel>(productInCart);
+                return Ok(productInCatrViewModel);
             }
 
         }
@@ -174,15 +178,16 @@ namespace WebStoreAPI.Controllers
             _applicationDB.ProductsInCarts.Update(productInCart);
             _applicationDB.SaveChanges();
 
-            var mapperConfig = new MapperConfiguration(cgf =>
-            {
-                cgf.CreateMap<ProductInCart, ProductInCartViewModel>();
-                cgf.CreateMap<Product, ProductViewModel>();
+            var mapperConfig = new MapperConfiguration(cfg =>
+            { 
+                cfg.CreateMap<ProductInCart, ProductInCartViewModel>();
+                cfg.CreateMap<Product, ProductViewModel>(); 
+                cfg.CreateMap<Store, StorePutModel>(); 
             });
             var mapper = new Mapper(mapperConfig);
 
-            var productInCatrView = mapper.Map<ProductInCart, ProductInCartViewModel>(productInCart);
-            return Ok(productInCatrView);
+            var productInCatrViewModel = mapper.Map<ProductInCart, ProductInCartViewModel>(productInCart);
+            return Ok(productInCatrViewModel);
         }
 
         [Route("buy")]
@@ -203,14 +208,14 @@ namespace WebStoreAPI.Controllers
             string companyPassword = _appConfiguration["CompanyData:EmailPassword"];
 
             MailAddress from = new MailAddress(companyEmail, companyName);
-            MailAddress to = new MailAddress(_currentUser.Email);
+            MailAddress to = new MailAddress(_user.Email);
          
             string htmlString = System.IO.File.ReadAllText("Views/PurchaseEmail.html");
             var template = Template.Parse(htmlString);
             string result = template.Render(new
             {
                 cartcost = _productsCart.ProductsCartCost,
-                username = _currentUser.UserName,
+                username = _user.UserName,
                 productsincart = selectedProductsInCart
             });
 
@@ -235,16 +240,16 @@ namespace WebStoreAPI.Controllers
 
             _applicationDB.SaveChanges();
 
-            var mapperConfig = new MapperConfiguration(cgf =>
-            {
-                cgf.CreateMap<ProductInCart, ProductInCartViewModel>();
-                cgf.CreateMap<Product, ProductViewModel>();
+            var mapperConfig = new MapperConfiguration(cfg => 
+            { cfg.CreateMap<ProductInCart, ProductInCartViewModel>(); 
+                cfg.CreateMap<Product, ProductViewModel>(); 
+                cfg.CreateMap<Store, StorePutModel>(); 
             });
             var mapper = new Mapper(mapperConfig);
 
-            var selectedProductInCarViews = mapper.Map<List<ProductInCart>, List<ProductInCartViewModel>>(selectedProductsInCart);
+            var selectedProductInCarViewModels = mapper.Map<List<ProductInCart>, List<ProductInCartViewModel>>(selectedProductsInCart);
 
-            return Ok(selectedProductInCarViews);
+            return Ok(selectedProductInCarViewModels);
         }
 
     }

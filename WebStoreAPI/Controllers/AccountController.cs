@@ -8,6 +8,7 @@ using System.Linq;
 using System.Threading.Tasks;
 using SignInResult = Microsoft.AspNetCore.Identity.SignInResult;
 using Microsoft.AspNetCore.Authorization;
+using AutoMapper;
 
 namespace WebStoreAPI.Controllers
 {
@@ -26,15 +27,19 @@ namespace WebStoreAPI.Controllers
 
         [Authorize]
         [HttpGet]
-        public ActionResult<User> Get()
+        public ActionResult<UserViewModel> Get()
         {
             User user = _userManager.GetUserAsync(HttpContext.User).Result;
-            return new ObjectResult(user);
+            var mapperConfig = new MapperConfiguration(cfg => cfg.CreateMap<User, UserViewModel>().ForMember(nameof(UserViewModel.Name), opt =>
+                                                                                                   opt.MapFrom(x => x.UserName)));
+            var mapper = new Mapper(mapperConfig);
+            var userViewModel = mapper.Map<User, UserViewModel>(user);
+            return userViewModel;
         }
 
         [HttpPost]
         [Route("register")]
-        public ActionResult<User> Register(RegisterUserModel registerModel)
+        public ActionResult<UserViewModel> Register(RegisterUserModel registerModel)
         {
             if (!ModelState.IsValid)
                 return BadRequest();
@@ -42,11 +47,16 @@ namespace WebStoreAPI.Controllers
             var user = new User() { Email = registerModel.Email, UserName = registerModel.Name };
             var result = _userManager.CreateAsync(user, registerModel.Password).Result;
 
+            var mapperConfig = new MapperConfiguration(cfg => cfg.CreateMap<User, UserViewModel>().ForMember(nameof(UserViewModel.Name), opt =>
+                                                                                                   opt.MapFrom(x => x.UserName)));
+            var mapper = new Mapper(mapperConfig);
+
             if (result.Succeeded)
             {
                  _userManager.AddToRoleAsync(user, "user").Wait();
                  _signInManager.SignInAsync(user, false).Wait();
-                return Ok(user);
+                 var userViewModel = mapper.Map<User, UserViewModel>(user);
+                 return Ok(userViewModel);
             }
             else
             {

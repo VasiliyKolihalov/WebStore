@@ -19,5 +19,7 @@ namespace WebStoreAPI.Models
         public string Description { get; set; }
         [Min(0)]
         public int QuantityInStock { get; set; }
+        [Required]
+        public StorePutModel Store { get; set; }
     }
 }

@@ -5,12 +5,11 @@ using System.Threading.Tasks;
 
 namespace WebStoreAPI.Models
 {
-    public class ProductsCartViewModel
+    public class OpenStoreRequestViewModel
     {
         public int Id { get; set; }
         public UserViewModel User { get; set; }
-        public List<ProductInCartViewModel> ProductsInCart { get; set; }
-        public decimal ProductsCartCost { get => ProductsInCart.Sum(x => x.Cost); }
-      
+        public string Message { get; set; }
+        public string StoreName { get; set; }
     }
 }

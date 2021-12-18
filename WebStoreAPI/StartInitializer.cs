@@ -9,18 +9,23 @@ using Microsoft.Extensions.Logging;
 
 namespace WebStoreAPI
 {
-    public class StartRoleInitializer
+    public class StartInitializer
     {
         public static void Initialize(UserManager<User> userManager, RoleManager<IdentityRole> roleManager, IConfiguration appConfiguration, ILogger<Program> logger)
         {
-            if(roleManager.FindByNameAsync("admin").Result == null)
+            if(roleManager.FindByNameAsync(RolesConstants.AdminRoleName).Result == null)
             {
-                roleManager.CreateAsync(new IdentityRole("admin")).Wait();
+                roleManager.CreateAsync(new IdentityRole(RolesConstants.AdminRoleName)).Wait();
             }
 
-            if(roleManager.FindByNameAsync("user").Result == null)
+            if(roleManager.FindByNameAsync(RolesConstants.UserRoleName).Result == null)
             {
-                roleManager.CreateAsync(new IdentityRole("user")).Wait();
+                roleManager.CreateAsync(new IdentityRole(RolesConstants.UserRoleName)).Wait();
+            }
+
+            if (roleManager.FindByNameAsync(RolesConstants.SellerRoleName).Result == null)
+            {
+                roleManager.CreateAsync(new IdentityRole(RolesConstants.SellerRoleName)).Wait();
             }
 
             if (userManager.FindByNameAsync("admin").Result == null)
@@ -34,7 +39,8 @@ namespace WebStoreAPI
 
                 if (result.Succeeded)
                 {
-                    userManager.AddToRoleAsync(admin, "admin").Wait();
+                    userManager.AddToRoleAsync(admin, RolesConstants.AdminRoleName).Wait();
+                    userManager.AddToRoleAsync(admin, RolesConstants.SellerRoleName).Wait();
                 }
                 else
                 {
