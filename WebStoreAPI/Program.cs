@@ -24,7 +24,7 @@ namespace WebStoreAPI
                 var roleManager = services.GetService<RoleManager<IdentityRole>>();
                 var appConfiguration = services.GetService<IConfiguration>();
                 var logger = services.GetService<ILogger<Program>>();       
-                StartRoleInitializer.Initialize(userManager, roleManager, appConfiguration, logger);
+                StartInitializer.Initialize(userManager, roleManager, appConfiguration, logger);
             }
             host.Run();
         }

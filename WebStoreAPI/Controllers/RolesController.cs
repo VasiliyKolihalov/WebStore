@@ -10,11 +10,12 @@ using Microsoft.AspNetCore.Authorization;
 
 namespace WebStoreAPI.Controllers
 {
-    [Authorize(Roles = "admin")]
+    [Authorize(Roles = RolesConstants.AdminRoleName)]
     [Route("api/[controller]")]
     [ApiController]
     public class RolesController : ControllerBase
     {
+
         private readonly RoleManager<IdentityRole> _roleManager;
 
         public RolesController(RoleManager<IdentityRole> roleManager)

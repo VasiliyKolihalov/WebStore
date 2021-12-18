@@ -8,12 +8,14 @@ namespace WebStoreAPI.Models
 {
     public class Base64ImageViewModel
     {
-        [Required]
+        
         public long Id { get; set; }
-        [Required]
+        
         public string Name { get; set; }
-        [Required]
+       
         public string ImageData { get; set; }
+
+        public UserViewModel User { get; set; }
 
     }
 }

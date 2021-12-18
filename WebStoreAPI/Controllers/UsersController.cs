@@ -7,10 +7,11 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Threading.Tasks;
 using Microsoft.AspNetCore.Authorization;
+using AutoMapper;
 
 namespace WebStoreAPI.Controllers
 {
-    [Authorize(Roles = "admin")]
+    [Authorize(Roles = RolesConstants.AdminRoleName)]
     [Route("api/[controller]")]
     [ApiController]
     public class UsersController : ControllerBase
@@ -27,22 +28,36 @@ namespace WebStoreAPI.Controllers
         }
 
         [HttpGet]
-        public  ActionResult<IEnumerable<User>> Get()
+        public  ActionResult<IEnumerable<UserViewModel>> Get()
         {
-            return  _userManager.Users.ToList();
+            var users = _userManager.Users;
+
+            var mapperConfig = new MapperConfiguration(cfg => cfg.CreateMap<User, UserViewModel>().ForMember(nameof(UserViewModel.Name), opt =>
+                                                                                                    opt.MapFrom(x => x.UserName)));
+            var mapper = new Mapper(mapperConfig);
+
+            var userViewModels = mapper.Map<IEnumerable<User>, List<UserViewModel>>(users);
+            return userViewModels;
         }
 
         [HttpDelete("{id}")]
-        public ActionResult<User> Delete(string id)
+        public ActionResult<UserViewModel> Delete(string id)
         {
             var user = _userManager.FindByIdAsync(id).Result;
+
             if (user == null)
                 return NotFound();
 
             var result = _userManager.DeleteAsync(user).Result;
+
+            var mapperConfig = new MapperConfiguration(cfg => cfg.CreateMap<User, UserViewModel>().ForMember(nameof(UserViewModel.Name), opt =>
+                                                                                                   opt.MapFrom(x => x.UserName)));
+            var mapper = new Mapper(mapperConfig);
+
             if (result.Succeeded)
             {
-                return Ok(user);
+                var userViewModel = mapper.Map<User ,UserViewModel>(user);
+                return Ok(userViewModel);
             }
             else
             {
@@ -56,7 +71,7 @@ namespace WebStoreAPI.Controllers
 
         [HttpPost]
         [Route("{userId}/addrole/{roleName}")]
-        public ActionResult<User> AddRole(string userId, string roleName)
+        public ActionResult<UserViewModel> AddRole(string userId, string roleName)
         {
             var user = _userManager.FindByIdAsync(userId).Result;
             var role = _roleManager.FindByNameAsync(roleName).Result;
@@ -65,10 +80,15 @@ namespace WebStoreAPI.Controllers
 
             var result = _userManager.AddToRoleAsync(user, role.Name).Result;
 
+            var mapperConfig = new MapperConfiguration(cfg => cfg.CreateMap<User, UserViewModel>().ForMember(nameof(UserViewModel.Name), opt =>
+                                                                                                  opt.MapFrom(x => x.UserName)));
+            var mapper = new Mapper(mapperConfig);
+
             if (result.Succeeded)
             {
                 _signInManager.RefreshSignInAsync(user).Wait();
-                return Ok(user);
+                var userViewModel = mapper.Map<User, UserViewModel>(user);
+                return Ok(userViewModel);
             }
             else
             {
@@ -91,10 +111,15 @@ namespace WebStoreAPI.Controllers
 
             var result = _userManager.RemoveFromRoleAsync(user, role.Name).Result;
 
+            var mapperConfig = new MapperConfiguration(cfg => cfg.CreateMap<User, UserViewModel>().ForMember(nameof(UserViewModel.Name), opt =>
+                                                                                                  opt.MapFrom(x => x.UserName)));
+            var mapper = new Mapper(mapperConfig);
+
             if (result.Succeeded)
             {
                 _signInManager.RefreshSignInAsync(user).Wait();
-                return Ok(user);
+                var userViewModel = mapper.Map<User, UserViewModel>(user);
+                return Ok(userViewModel);
             }
             else
             {

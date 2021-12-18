@@ -5,12 +5,10 @@ using System.Threading.Tasks;
 
 namespace WebStoreAPI.Models
 {
-    public class Image
+    public class UserViewModel
     {
-        public long Id { get; set; }
+        public string Id { get; set; }
         public string Name { get; set; }
-        public byte[] ImageData { get; set; }
-        public User User { get; set; }
-    
+        public string Email { get; set; }
     }
 }
