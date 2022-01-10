@@ -117,6 +117,30 @@ namespace WebStoreAPI.Controllers
 
         }
 
+        [Route("getbasedtag/{tagId}")]
+        [HttpGet]
+        public ActionResult<IEnumerable<ProductViewModel>> GetBasedTag(int tagId)
+        {
+            var tag = _applicationDB.Tags.FirstOrDefault(x => x.Id == tagId);
+
+            if (tag == null)
+                return NotFound();
+
+            var products = _applicationDB.Products.Include(x => x.Store).Where(x => x.Tags.FirstOrDefault(x => x.Id == tagId) != null);
+
+
+            var mapperConfig = new MapperConfiguration(cfg =>
+            {
+                cfg.CreateMap<Product, ProductViewModel>();
+                cfg.CreateMap<Store, StorePutModel>();
+            });
+            var mapper = new Mapper(mapperConfig);
+
+            var productsViewModels = mapper.Map<IEnumerable<Product>, List<ProductViewModel>>(products);
+
+            return productsViewModels;
+        }
+
         [Authorize(Roles = RolesConstants.AdminRoleName + ", " + RolesConstants.SellerRoleName)]
         [HttpPost]
         public ActionResult<ProductViewModel> Post(ProductAddModel productAddModel)
@@ -412,6 +436,86 @@ namespace WebStoreAPI.Controllers
 
             return Ok(base64ImageViewModel);
         }
+        #endregion
+
+        #region product tags
+
+        [Route("{productId}/gettags")]
+        [HttpGet]
+        public ActionResult<IEnumerable<TagViewModel>> GetTags(long productId)
+        {
+            var product = _applicationDB.Products.Include(x => x.Tags).Include(x => x.Store).FirstOrDefault(x => x.Id == productId);
+
+            if (product == null)
+                return NotFound();
+
+            var tags = product.Tags;
+
+            var mapperConfig = new MapperConfiguration(cfg => cfg.CreateMap<Tag, TagViewModel>());
+            var mapper = new Mapper(mapperConfig);
+
+            var tagViewModels = mapper.Map<IEnumerable<Tag>, List<TagViewModel>>(tags);
+
+            return tagViewModels;
+        }
+
+
+        [Authorize(Roles = RolesConstants.AdminRoleName)]
+        [Route("{productId}/addtag/{tagId}")]
+        [HttpPost]
+        public ActionResult<TagViewModel> AddTag(long productId, int tagId)
+        {
+            var product = _applicationDB.Products.Include(x => x.Tags).FirstOrDefault(x => x.Id == productId);
+
+            var tag = _applicationDB.Tags.FirstOrDefault(x => x.Id == tagId);
+
+            if (product == null || tag == null)
+                return NotFound();
+
+            if (product.Tags.Contains(tag))
+                return BadRequest();
+
+            product.Tags.Add(tag);
+
+            _applicationDB.Products.Update(product);
+            _applicationDB.SaveChanges();
+
+            var mapperConfig = new MapperConfiguration(cfg => cfg.CreateMap<Tag, TagViewModel>());
+            var mapper = new Mapper(mapperConfig);
+
+            var tagViewModels = mapper.Map<Tag,TagViewModel>(tag);
+
+            return Ok(tagViewModels);
+        }
+
+        [Authorize(Roles = RolesConstants.AdminRoleName)]
+        [Route("{productId}/removetag/{tagId}")]
+        [HttpDelete]
+        public ActionResult<TagViewModel> RemoveTag(long productId, int tagId)
+        {
+            var product = _applicationDB.Products.Include(x => x.Tags).FirstOrDefault(x => x.Id == productId);
+
+            var tag = _applicationDB.Tags.FirstOrDefault(x => x.Id == tagId);
+
+            if (product == null || tag == null)
+                return NotFound();
+
+            if (!product.Tags.Contains(tag))
+                return BadRequest();
+
+            product.Tags.Remove(tag);
+
+            _applicationDB.Products.Update(product);
+            _applicationDB.SaveChanges();
+
+            var mapperConfig = new MapperConfiguration(cfg => cfg.CreateMap<Tag, TagViewModel>());
+            var mapper = new Mapper(mapperConfig);
+
+            var tagViewModels = mapper.Map<Tag, TagViewModel>(tag);
+
+            return Ok(tagViewModels);
+        }
+
         #endregion
 
     }

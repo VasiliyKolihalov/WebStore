@@ -17,6 +17,7 @@ namespace WebStoreAPI.Models
         public DbSet<Category> Categories { get; set; }
         public DbSet<Store> Stores { get; set; } 
         public DbSet<OpenStoreRequest> OpenStoreRequests { get; set; }
+        public DbSet<Tag> Tags { get; set; }
 
         public ApplicationContext(DbContextOptions<ApplicationContext> options) : base(options)
         {
