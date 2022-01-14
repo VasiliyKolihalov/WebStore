@@ -38,6 +38,8 @@ namespace WebStoreAPI
 
             services.AddTransient<IConfiguration>(provider => AppConfiguration);
 
+            services.AddHttpContextAccessor();
+
             services.AddControllers();
         }
 

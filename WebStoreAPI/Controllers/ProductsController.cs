@@ -9,6 +9,7 @@ using Microsoft.AspNetCore.Authorization;
 using Microsoft.EntityFrameworkCore;
 using AutoMapper;
 using Microsoft.AspNetCore.Identity;
+using Microsoft.Extensions.DependencyInjection;
 
 namespace WebStoreAPI.Controllers
 {
@@ -17,13 +18,12 @@ namespace WebStoreAPI.Controllers
     public class ProductsController : ControllerBase
     {
         private readonly ApplicationContext _applicationDB;
-        private readonly UserManager<User> _userManager;
+        private UserManager<User> _userManager;
         private User _user;
 
-        public ProductsController(ApplicationContext productsContext, UserManager<User> userManager)
+        public ProductsController(ApplicationContext productsContext)
         {
-            _applicationDB = productsContext;
-            _userManager = userManager;
+            _applicationDB = productsContext;         
         }
 
         private void SetUser()
@@ -183,6 +183,7 @@ namespace WebStoreAPI.Controllers
                 return NotFound();
 
             SetUser();
+            _userManager = HttpContext.RequestServices.GetService<UserManager<User>>();
             IList<string> userRoles = _userManager.GetRolesAsync(_user).Result;
 
             if (!userRoles.Contains(RolesConstants.AdminRoleName))
@@ -273,6 +274,7 @@ namespace WebStoreAPI.Controllers
                 return NotFound();
 
             SetUser();
+            _userManager = HttpContext.RequestServices.GetService<UserManager<User>>();
             IList<string> userRoles = _userManager.GetRolesAsync(_user).Result;
 
             if (!userRoles.Contains(RolesConstants.AdminRoleName))
@@ -310,6 +312,7 @@ namespace WebStoreAPI.Controllers
                 return NotFound();
 
             SetUser();
+            _userManager = HttpContext.RequestServices.GetService<UserManager<User>>();
             IList<string> userRoles = _userManager.GetRolesAsync(_user).Result;
 
             if (!userRoles.Contains(RolesConstants.AdminRoleName))
@@ -377,6 +380,7 @@ namespace WebStoreAPI.Controllers
                 return BadRequest();
 
             SetUser();
+            _userManager = HttpContext.RequestServices.GetService<UserManager<User>>();
             IList<string> userRoles = _userManager.GetRolesAsync(_user).Result;
 
             if (!userRoles.Contains(RolesConstants.AdminRoleName))
@@ -414,6 +418,7 @@ namespace WebStoreAPI.Controllers
 
 
             SetUser();
+            _userManager = HttpContext.RequestServices.GetService<UserManager<User>>();
             IList<string> userRoles = _userManager.GetRolesAsync(_user).Result;
 
             if (!userRoles.Contains(RolesConstants.AdminRoleName))
