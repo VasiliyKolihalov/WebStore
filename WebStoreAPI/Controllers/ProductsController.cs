@@ -18,12 +18,13 @@ namespace WebStoreAPI.Controllers
     public class ProductsController : ControllerBase
     {
         private readonly ApplicationContext _applicationDB;
-        private UserManager<User> _userManager;
+        private readonly UserManager<User> _userManager;
         private User _user;
 
-        public ProductsController(ApplicationContext productsContext)
+        public ProductsController(ApplicationContext productsContext, UserManager<User> userManager)
         {
-            _applicationDB = productsContext;         
+            _applicationDB = productsContext;
+            _userManager = userManager;
         }
 
         private void SetUser()
@@ -34,9 +35,7 @@ namespace WebStoreAPI.Controllers
         [HttpGet]
         public ActionResult<IEnumerable<ProductViewModel>> GetAll()
         {
-            var products = _applicationDB.Products.Include(x => x.Store);
-
-            var productViewModels = new List<ProductViewModel>();
+            var products = _applicationDB.Products.Include(x => x.Store).ToListAsync().Result;
 
             var mapperConfig = new MapperConfiguration(cfg =>
             {
@@ -45,7 +44,7 @@ namespace WebStoreAPI.Controllers
             });
             var mapper = new Mapper(mapperConfig);
 
-            productViewModels = mapper.Map<IEnumerable<Product>, List<ProductViewModel>>(products);
+            List<ProductViewModel> productViewModels = mapper.Map<IEnumerable<Product>, List<ProductViewModel>>(products);
 
             return productViewModels;
 
@@ -149,7 +148,6 @@ namespace WebStoreAPI.Controllers
                 return BadRequest();
 
             SetUser();
-            IList<string> userRoles = _userManager.GetRolesAsync(_user).Result;
 
             var store = _applicationDB.Stores.Include(x => x.Seller).FirstOrDefault(x => x.Seller.Id == _user.Id);
 
@@ -182,8 +180,7 @@ namespace WebStoreAPI.Controllers
             if (product == null)
                 return NotFound();
 
-            SetUser();
-            _userManager = HttpContext.RequestServices.GetService<UserManager<User>>();
+            SetUser();           
             IList<string> userRoles = _userManager.GetRolesAsync(_user).Result;
 
             if (!userRoles.Contains(RolesConstants.AdminRoleName))
@@ -274,7 +271,6 @@ namespace WebStoreAPI.Controllers
                 return NotFound();
 
             SetUser();
-            _userManager = HttpContext.RequestServices.GetService<UserManager<User>>();
             IList<string> userRoles = _userManager.GetRolesAsync(_user).Result;
 
             if (!userRoles.Contains(RolesConstants.AdminRoleName))
@@ -311,8 +307,7 @@ namespace WebStoreAPI.Controllers
             if (category == null || product == null || !product.Categories.Contains(category))
                 return NotFound();
 
-            SetUser();
-            _userManager = HttpContext.RequestServices.GetService<UserManager<User>>();
+            SetUser();            
             IList<string> userRoles = _userManager.GetRolesAsync(_user).Result;
 
             if (!userRoles.Contains(RolesConstants.AdminRoleName))
@@ -350,17 +345,14 @@ namespace WebStoreAPI.Controllers
 
             var images = product.Images;
 
-            var base64ImageViewModels = new List<Base64ImagePutModel>();
-
             var mapperConfig = new MapperConfiguration(cfg =>
             {
                 cfg.CreateMap<Image, Base64ImagePutModel>().ForMember(nameof(Base64ImagePutModel.ImageData), opt => opt
                                                             .MapFrom(x => Convert.ToBase64String(x.ImageData)));
-
             });
             var mapper = new Mapper(mapperConfig);
 
-            base64ImageViewModels = mapper.Map<IEnumerable<Image>, List<Base64ImagePutModel>>(images);
+            List<Base64ImagePutModel> base64ImageViewModels = mapper.Map<IEnumerable<Image>, List<Base64ImagePutModel>>(images);
             return base64ImageViewModels;
         }
 
@@ -379,8 +371,7 @@ namespace WebStoreAPI.Controllers
             if (product.Images.Contains(image))
                 return BadRequest();
 
-            SetUser();
-            _userManager = HttpContext.RequestServices.GetService<UserManager<User>>();
+            SetUser();           
             IList<string> userRoles = _userManager.GetRolesAsync(_user).Result;
 
             if (!userRoles.Contains(RolesConstants.AdminRoleName))
@@ -417,8 +408,7 @@ namespace WebStoreAPI.Controllers
                 return NotFound();
 
 
-            SetUser();
-            _userManager = HttpContext.RequestServices.GetService<UserManager<User>>();
+            SetUser();           
             IList<string> userRoles = _userManager.GetRolesAsync(_user).Result;
 
             if (!userRoles.Contains(RolesConstants.AdminRoleName))
