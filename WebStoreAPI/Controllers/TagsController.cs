@@ -15,9 +15,9 @@ namespace WebStoreAPI.Controllers
     [ApiController]
     public class TagsController : ControllerBase
     {
-        private readonly ApplicationContext _applicationDB;
+        private readonly IApplicationContext _applicationDB;
 
-        public TagsController(ApplicationContext applicationContext)
+        public TagsController(IApplicationContext applicationContext)
         {
             _applicationDB = applicationContext;
         }

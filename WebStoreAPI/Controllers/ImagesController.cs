@@ -18,7 +18,7 @@ namespace WebStoreAPI.Controllers
     public class ImagesController : ControllerBase
     {
         private readonly ApplicationContext _applicationDB;
-        private UserManager<User> _userManager;
+        private readonly UserManager<User> _userManager;
         private User _user;
 
         public ImagesController(ApplicationContext applicationContext, UserManager<User> userManager)
@@ -118,7 +118,7 @@ namespace WebStoreAPI.Controllers
                                                            .MapFrom(x => Convert.FromBase64String(x.ImageData)));
 
                 cfg.CreateMap<Image, Base64ImageViewModel>().ForMember(nameof(Base64ImageViewModel.ImageData), opt =>
-                                                            opt.MapFrom(x => Convert.ToBase64String(x.ImageData))); ;
+                                                            opt.MapFrom(x => Convert.ToBase64String(x.ImageData)));
 
                 cfg.CreateMap<User, UserViewModel>().ForMember(nameof(UserViewModel.Name), opt => opt.MapFrom(x => x.UserName));
             });
@@ -162,7 +162,7 @@ namespace WebStoreAPI.Controllers
                                                             .MapFrom(x => Convert.ToBase64String(x.ImageData)));
 
                 cfg.CreateMap<Image, Base64ImageViewModel>().ForMember(nameof(Base64ImageViewModel.ImageData), opt =>
-                                                            opt.MapFrom(x => Convert.ToBase64String(x.ImageData))); ;
+                                                            opt.MapFrom(x => Convert.ToBase64String(x.ImageData)));
 
                 cfg.CreateMap<User, UserViewModel>().ForMember(nameof(UserViewModel.Name), opt => opt.MapFrom(x => x.UserName));
             });

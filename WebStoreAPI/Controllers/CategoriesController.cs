@@ -16,9 +16,9 @@ namespace WebStoreAPI.Controllers
     [ApiController]
     public class CategoriesController : ControllerBase
     {
-        private readonly ApplicationContext _applicationDB;
+        private readonly IApplicationContext _applicationDB;
 
-        public CategoriesController(ApplicationContext applicationContext)
+        public CategoriesController(IApplicationContext applicationContext)
         {
             _applicationDB = applicationContext;
         }
@@ -130,7 +130,7 @@ namespace WebStoreAPI.Controllers
                 category.Parent = null;
             }
 
-            _applicationDB.Update(category);
+            _applicationDB.Categories.Update(category);
             _applicationDB.SaveChanges();
 
             return Ok(categoryViewModel);
