@@ -26,10 +26,10 @@ namespace WebStoreAPI.Controllers
         private ProductsCart _productsCart;
         private User _user;
         private readonly IConfiguration _appConfiguration;
-        private readonly ApplicationContext _applicationDB;
+        private readonly IApplicationContext _applicationDB;
         private readonly UserManager<User> _userManager;
 
-        public ProductsCartController(ApplicationContext productsContext, UserManager<User> userManager, IConfiguration appConfiguration)
+        public ProductsCartController(IApplicationContext productsContext, UserManager<User> userManager, IConfiguration appConfiguration)
         {
             _userManager = userManager;
             _applicationDB = productsContext;
@@ -78,10 +78,7 @@ namespace WebStoreAPI.Controllers
         {
             var product = _applicationDB.Products.FirstOrDefault(x => x.Id == id);
 
-            if (product == null)
-                return NotFound();
-
-            if (product.QuantityInStock < 1)
+            if (product == null || product.QuantityInStock < 1)
                 return NotFound();
 
             SetUser();
@@ -109,8 +106,8 @@ namespace WebStoreAPI.Controllers
             else
             {
                 productInCart = new ProductInCart() {  Cost = product.Cost, Product = product};
-                _applicationDB.ProductsInCarts.Add(productInCart);
                 _productsCart.ProductsInCart.Add(productInCart);
+                _applicationDB.ProductsCarts.Update(_productsCart);
                 _applicationDB.SaveChanges();
 
                 var productInCatrViewModel = mapper.Map<ProductInCart, ProductInCartViewModel>(productInCart);
@@ -171,7 +168,7 @@ namespace WebStoreAPI.Controllers
             if (productInCart == null)
                 return NotFound();
 
-            if (productInCart.CanBuy == false)
+            if (!productInCart.CanBuy)
                 return BadRequest();
 
             productInCart.Selected = !productInCart.Selected;
@@ -197,10 +194,10 @@ namespace WebStoreAPI.Controllers
             SetUser();
             InitializeProductsCart();
 
-            var selectedProductsInCart = _productsCart.ProductsInCart.Where(x => x.Selected == true).ToList();
+            var selectedProductsInCart = _productsCart.ProductsInCart.Where(x => x.Selected).ToList();
 
             if (selectedProductsInCart.Count < 1 ||
-                selectedProductsInCart.FirstOrDefault(x => x.CanBuy == false) != null)
+                    selectedProductsInCart.FirstOrDefault(x => x.CanBuy == false) != null)
                 return BadRequest();
 
             string companyName = _appConfiguration["CompanyData:Name"];

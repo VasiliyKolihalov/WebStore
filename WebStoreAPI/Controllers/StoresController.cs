@@ -17,11 +17,11 @@ namespace WebStoreAPI.Controllers
     [ApiController]
     public class StoresController : ControllerBase
     {
-        private readonly ApplicationContext _applicationDB;
+        private readonly IApplicationContext _applicationDB;
         private readonly UserManager<User> _userManager;
         private User _user;
 
-        public StoresController(ApplicationContext applicationContext, UserManager<User> userManager)
+        public StoresController(IApplicationContext applicationContext, UserManager<User> userManager)
         {
             _applicationDB = applicationContext;
             _userManager = userManager;
@@ -60,7 +60,7 @@ namespace WebStoreAPI.Controllers
             var mapperConfig = new MapperConfiguration(cfg =>
             {
                 cfg.CreateMap<Store, StoreViewModel>();
-                cfg.CreateMap<User, UserViewModel>().ForMember(nameof(UserViewModel.Name), opt => opt.MapFrom(x => x.UserName)); ;
+                cfg.CreateMap<User, UserViewModel>().ForMember(nameof(UserViewModel.Name), opt => opt.MapFrom(x => x.UserName));
             });
             var mapper = new Mapper(mapperConfig);
 
@@ -84,8 +84,7 @@ namespace WebStoreAPI.Controllers
             if (store == null)
                 return NotFound();
 
-            if (!userRoles.Contains("admin"))
-                if (store.Seller.Id != _user.Id)
+            if (!userRoles.Contains("admin") && store.Seller.Id != _user.Id)               
                     return BadRequest();
 
             _applicationDB.Stores.Remove(store);
@@ -94,7 +93,7 @@ namespace WebStoreAPI.Controllers
             var mapperConfig = new MapperConfiguration(cfg =>
             {
                 cfg.CreateMap<Store, StoreViewModel>();
-                cfg.CreateMap<User, UserViewModel>().ForMember(nameof(UserViewModel.Name), opt => opt.MapFrom(x => x.UserName)); ;
+                cfg.CreateMap<User, UserViewModel>().ForMember(nameof(UserViewModel.Name), opt => opt.MapFrom(x => x.UserName));
             });
             var mapper = new Mapper(mapperConfig);
 
@@ -116,8 +115,7 @@ namespace WebStoreAPI.Controllers
             if (store == null)
                 return NotFound();
 
-            if (!userRoles.Contains("admin"))
-                if(store.Seller.Id != _user.Id)
+            if (!userRoles.Contains("admin") && store.Seller.Id != _user.Id)
                     return BadRequest();
 
             var mapperConfig = new MapperConfiguration(cgf => cgf.CreateMap<StorePutModel, Store>());
@@ -125,7 +123,7 @@ namespace WebStoreAPI.Controllers
 
             store = mapper.Map<StorePutModel, Store>(storePutModel);
 
-            _applicationDB.Update(store);
+            _applicationDB.Stores.Update(store);
             _applicationDB.SaveChanges();
 
             return Ok(storePutModel);

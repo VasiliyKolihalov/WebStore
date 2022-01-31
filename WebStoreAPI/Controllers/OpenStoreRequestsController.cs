@@ -16,12 +16,12 @@ namespace WebStoreAPI.Controllers
     [ApiController]
     public class OpenStoreRequestsController : ControllerBase
     {
-        private readonly ApplicationContext _applicationDB;
+        private readonly IApplicationContext _applicationDB;
         private readonly UserManager<User> _userManager;
         private readonly RoleManager<IdentityRole> _roleManager;
         private User _user;
 
-        public OpenStoreRequestsController(ApplicationContext applicationContext, UserManager<User> userManager, RoleManager<IdentityRole> roleManager)
+        public OpenStoreRequestsController(IApplicationContext applicationContext, UserManager<User> userManager, RoleManager<IdentityRole> roleManager)
         {
             _applicationDB = applicationContext;
             _userManager = userManager;

@@ -9,6 +9,7 @@ using Microsoft.AspNetCore.Authorization;
 using Microsoft.EntityFrameworkCore;
 using AutoMapper;
 using Microsoft.AspNetCore.Identity;
+using Microsoft.Extensions.DependencyInjection;
 
 namespace WebStoreAPI.Controllers
 {
@@ -16,11 +17,11 @@ namespace WebStoreAPI.Controllers
     [ApiController]
     public class ProductsController : ControllerBase
     {
-        private readonly ApplicationContext _applicationDB;
+        private readonly IApplicationContext _applicationDB;
         private readonly UserManager<User> _userManager;
         private User _user;
 
-        public ProductsController(ApplicationContext productsContext, UserManager<User> userManager)
+        public ProductsController(IApplicationContext productsContext, UserManager<User> userManager)
         {
             _applicationDB = productsContext;
             _userManager = userManager;
@@ -36,8 +37,6 @@ namespace WebStoreAPI.Controllers
         {
             var products = _applicationDB.Products.Include(x => x.Store);
 
-            var productViewModels = new List<ProductViewModel>();
-
             var mapperConfig = new MapperConfiguration(cfg =>
             {
                 cfg.CreateMap<Product, ProductViewModel>();
@@ -45,7 +44,7 @@ namespace WebStoreAPI.Controllers
             });
             var mapper = new Mapper(mapperConfig);
 
-            productViewModels = mapper.Map<IEnumerable<Product>, List<ProductViewModel>>(products);
+            List<ProductViewModel> productViewModels = mapper.Map<IEnumerable<Product>, List<ProductViewModel>>(products);
 
             return productViewModels;
 
@@ -149,7 +148,6 @@ namespace WebStoreAPI.Controllers
                 return BadRequest();
 
             SetUser();
-            IList<string> userRoles = _userManager.GetRolesAsync(_user).Result;
 
             var store = _applicationDB.Stores.Include(x => x.Seller).FirstOrDefault(x => x.Seller.Id == _user.Id);
 
@@ -176,22 +174,20 @@ namespace WebStoreAPI.Controllers
         [Authorize(Roles = RolesConstants.AdminRoleName + ", " + RolesConstants.SellerRoleName)]
         [HttpDelete("{id}")]
         public ActionResult<ProductViewModel> Delete(long id)
-        {      
+        {
             var product = _applicationDB.Products.Include(x => x.Store).FirstOrDefault(x => x.Id == id);
-          
+
             if (product == null)
                 return NotFound();
 
             SetUser();
             IList<string> userRoles = _userManager.GetRolesAsync(_user).Result;
 
-            if (!userRoles.Contains(RolesConstants.AdminRoleName))
-                if (product.Store.Seller.Id != _user.Id)
-                    return BadRequest();
-            
+            if (!userRoles.Contains(RolesConstants.AdminRoleName) && product.Store.Seller.Id != _user.Id)
+                return BadRequest();
+
             _applicationDB.Products.Remove(product);
             _applicationDB.SaveChanges();
-
 
             var mapperConfig = new MapperConfiguration(cfg =>
             {
@@ -222,11 +218,15 @@ namespace WebStoreAPI.Controllers
             SetUser();
             IList<string> userRoles = _userManager.GetRolesAsync(_user).Result;
 
-            if (!userRoles.Contains(RolesConstants.AdminRoleName))
-                if (product.Store.Seller.Id != _user.Id)
-                    return BadRequest();
+            if (!userRoles.Contains(RolesConstants.AdminRoleName) && product.Store.Seller.Id != _user.Id)
+                return BadRequest();
 
-            var mapperConfig = new MapperConfiguration(cfg => cfg.CreateMap<ProductPutModel, Product>());
+            var mapperConfig = new MapperConfiguration(cfg =>
+            {
+                cfg.CreateMap<ProductPutModel, Product>();
+                cfg.CreateMap<Product, ProductViewModel>();
+                cfg.CreateMap<Store, StorePutModel>();
+            });
             var mapper = new Mapper(mapperConfig);
 
             product = mapper.Map<ProductPutModel, Product>(productPutModel);
@@ -234,7 +234,8 @@ namespace WebStoreAPI.Controllers
             _applicationDB.Products.Update(product);
             _applicationDB.SaveChanges();
 
-            return Ok(productPutModel);
+            var productViewModel = mapper.Map<Product, ProductViewModel>(product);
+            return Ok(productViewModel);
         }
 
         #region product categories
@@ -275,9 +276,8 @@ namespace WebStoreAPI.Controllers
             SetUser();
             IList<string> userRoles = _userManager.GetRolesAsync(_user).Result;
 
-            if (!userRoles.Contains(RolesConstants.AdminRoleName))
-                if (product.Store.Seller.Id != _user.Id)
-                    return BadRequest();
+            if (!userRoles.Contains(RolesConstants.AdminRoleName) && product.Store.Seller.Id != _user.Id)
+                return BadRequest();
 
 
             if (product.Categories.Contains(category))
@@ -289,7 +289,7 @@ namespace WebStoreAPI.Controllers
             _applicationDB.SaveChanges();
 
             var mapperConfig = new MapperConfiguration(cfg => cfg.CreateMap<Category, CategoryViewModel>()
-                                                                 .ForMember(nameof(CategoryViewModel.ParentId), opt => 
+                                                                 .ForMember(nameof(CategoryViewModel.ParentId), opt =>
                                                                  opt.MapFrom(x => x.Parent.Id)));
             var mapper = new Mapper(mapperConfig);
 
@@ -312,9 +312,8 @@ namespace WebStoreAPI.Controllers
             SetUser();
             IList<string> userRoles = _userManager.GetRolesAsync(_user).Result;
 
-            if (!userRoles.Contains(RolesConstants.AdminRoleName))
-                if (product.Store.Seller.Id != _user.Id)
-                    return BadRequest();
+            if (!userRoles.Contains(RolesConstants.AdminRoleName) && product.Store.Seller.Id != _user.Id)
+                return BadRequest();
 
             product.Categories.Remove(category);
 
@@ -330,7 +329,7 @@ namespace WebStoreAPI.Controllers
             return Ok(categoryViewModel);
         }
 
-        #endregion 
+        #endregion
 
         #region product images
 
@@ -340,24 +339,21 @@ namespace WebStoreAPI.Controllers
         {
             SetUser();
             var product = _applicationDB.Products.Include(x => x.Images).Include(x => x.Store).FirstOrDefault(x => x.Id == productId);
-            
+
 
             if (product == null)
                 return NotFound();
 
             var images = product.Images;
 
-            var base64ImageViewModels = new List<Base64ImagePutModel>();
-
             var mapperConfig = new MapperConfiguration(cfg =>
             {
                 cfg.CreateMap<Image, Base64ImagePutModel>().ForMember(nameof(Base64ImagePutModel.ImageData), opt => opt
                                                             .MapFrom(x => Convert.ToBase64String(x.ImageData)));
-
             });
             var mapper = new Mapper(mapperConfig);
 
-            base64ImageViewModels = mapper.Map<IEnumerable<Image>, List<Base64ImagePutModel>>(images);
+            List<Base64ImagePutModel> base64ImageViewModels = mapper.Map<IEnumerable<Image>, List<Base64ImagePutModel>>(images);
             return base64ImageViewModels;
         }
 
@@ -379,13 +375,12 @@ namespace WebStoreAPI.Controllers
             SetUser();
             IList<string> userRoles = _userManager.GetRolesAsync(_user).Result;
 
-            if (!userRoles.Contains(RolesConstants.AdminRoleName))
-                if (product.Store.Seller.Id != _user.Id || image.User.Id != _user.Id)
-                    return BadRequest();
+            if (!userRoles.Contains(RolesConstants.AdminRoleName) && product.Store.Seller.Id != _user.Id)
+                return BadRequest();
 
             product.Images.Add(image);
 
-            _applicationDB.Update(product);
+            _applicationDB.Products.Update(product);
             _applicationDB.SaveChanges();
 
             var mapperConfig = new MapperConfiguration(cfg =>
@@ -416,18 +411,17 @@ namespace WebStoreAPI.Controllers
             SetUser();
             IList<string> userRoles = _userManager.GetRolesAsync(_user).Result;
 
-            if (!userRoles.Contains(RolesConstants.AdminRoleName))
-                if (product.Store.Seller.Id != _user.Id)
-                    return BadRequest();
+            if (!userRoles.Contains(RolesConstants.AdminRoleName) && product.Store.Seller.Id != _user.Id)
+                return BadRequest();
 
             product.Images.Remove(image);
-            _applicationDB.Update(product);
+            _applicationDB.Products.Update(product);
             _applicationDB.SaveChanges();
 
             var mapperConfig = new MapperConfiguration(cfg =>
             {
                 cfg.CreateMap<Image, Base64ImagePutModel>().ForMember(nameof(Base64ImagePutModel.ImageData), opt => opt
-                                                           .MapFrom(x => Convert.ToBase64String(x.ImageData)));            
+                                                           .MapFrom(x => Convert.ToBase64String(x.ImageData)));
 
             });
             var mapper = new Mapper(mapperConfig);
@@ -483,7 +477,7 @@ namespace WebStoreAPI.Controllers
             var mapperConfig = new MapperConfiguration(cfg => cfg.CreateMap<Tag, TagViewModel>());
             var mapper = new Mapper(mapperConfig);
 
-            var tagViewModels = mapper.Map<Tag,TagViewModel>(tag);
+            var tagViewModels = mapper.Map<Tag, TagViewModel>(tag);
 
             return Ok(tagViewModels);
         }

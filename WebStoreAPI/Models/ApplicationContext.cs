@@ -8,14 +8,14 @@ using System.Threading.Tasks;
 
 namespace WebStoreAPI.Models
 {
-    public class ApplicationContext : IdentityDbContext<User>
+    public class ApplicationContext : IdentityDbContext<User>, IApplicationContext
     {
         public DbSet<Product> Products { get; set; }
         public DbSet<ProductsCart> ProductsCarts { get; set; }
         public DbSet<ProductInCart> ProductsInCarts { get; set; }
         public DbSet<Image> Images { get; set; }
         public DbSet<Category> Categories { get; set; }
-        public DbSet<Store> Stores { get; set; } 
+        public DbSet<Store> Stores { get; set; }
         public DbSet<OpenStoreRequest> OpenStoreRequests { get; set; }
         public DbSet<Tag> Tags { get; set; }
 
@@ -23,6 +23,5 @@ namespace WebStoreAPI.Models
         {
             Database.EnsureCreated();
         }
-      
     }
 }

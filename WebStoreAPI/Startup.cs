@@ -31,12 +31,16 @@ namespace WebStoreAPI
         public void ConfigureServices(IServiceCollection services)
         {
             services.AddDbContext<ApplicationContext>(options =>
-            options.UseSqlServer(AppConfiguration.GetConnectionString("DeafultConnection")));
+              options.UseSqlServer(AppConfiguration.GetConnectionString("DeafultConnection")));
+
+            services.AddScoped<IApplicationContext>(provider => provider.GetService<ApplicationContext>());
 
             services.AddIdentity<User, IdentityRole>()
                 .AddEntityFrameworkStores<ApplicationContext>();
 
             services.AddTransient<IConfiguration>(provider => AppConfiguration);
+
+            services.AddHttpContextAccessor();
 
             services.AddControllers();
         }
@@ -51,7 +55,7 @@ namespace WebStoreAPI
             app.UseRouting();
             app.UseAuthentication();
             app.UseAuthorization();
-           
+
             app.UseEndpoints(endpoints =>
             {
                 endpoints.MapControllers();
