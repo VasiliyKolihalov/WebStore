@@ -9,7 +9,7 @@ using Microsoft.Extensions.Logging;
 
 namespace WebStoreAPI
 {
-    public class StartInitializer
+    public static class StartInitializer
     {
         public static void Initialize(UserManager<User> userManager, RoleManager<IdentityRole> roleManager, IConfiguration appConfiguration, ILogger<Program> logger)
         {

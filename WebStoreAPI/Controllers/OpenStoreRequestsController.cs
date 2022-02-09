@@ -16,14 +16,14 @@ namespace WebStoreAPI.Controllers
     [ApiController]
     public class OpenStoreRequestsController : ControllerBase
     {
-        private readonly IApplicationContext _applicationDB;
+        private readonly IApplicationContext _applicationDb;
         private readonly UserManager<User> _userManager;
         private readonly RoleManager<IdentityRole> _roleManager;
         private User _user;
 
         public OpenStoreRequestsController(IApplicationContext applicationContext, UserManager<User> userManager, RoleManager<IdentityRole> roleManager)
         {
-            _applicationDB = applicationContext;
+            _applicationDb = applicationContext;
             _userManager = userManager;
             _roleManager = roleManager;
         }
@@ -37,7 +37,7 @@ namespace WebStoreAPI.Controllers
         [HttpGet]
         public ActionResult<IEnumerable<OpenStoreRequestViewModel>> GetAll()
         {
-            var requests = _applicationDB.OpenStoreRequests.Include(x => x.User);
+            var requests = _applicationDb.OpenStoreRequests.Include(x => x.User);
 
             var mapperConfig = new MapperConfiguration(cfg =>
             {
@@ -56,7 +56,7 @@ namespace WebStoreAPI.Controllers
         [HttpGet("{requestId}")]
         public ActionResult<OpenStoreRequestViewModel> Get(int requestId)
         {
-            var request = _applicationDB.OpenStoreRequests.FirstOrDefault(x => x.Id == requestId);
+            var request = _applicationDb.OpenStoreRequests.FirstOrDefault(x => x.Id == requestId);
 
             if (request == null)
                 return NotFound();
@@ -74,14 +74,19 @@ namespace WebStoreAPI.Controllers
             return requestViewModel;
         }
 
-        [Authorize]
+        [Authorize()]
         [HttpPost]
         public ActionResult<OpenStoreRequestViewModel> Post(OpenStoreRequestAddModel requestAddModel)
         {
             if (!ModelState.IsValid)
-                return BadRequest();
+                return BadRequest(ModelState);
 
             SetUser();
+            if (!_user.EmailConfirmed)
+            {
+                ModelState.AddModelError(string.Empty, "email not confirmed");
+                return BadRequest(ModelState);
+            }
 
             var mapperConfig = new MapperConfiguration(cfg =>
             {
@@ -94,8 +99,8 @@ namespace WebStoreAPI.Controllers
             var request = mapper.Map<OpenStoreRequestAddModel, OpenStoreRequest>(requestAddModel);
             request.User = _user;
 
-            _applicationDB.OpenStoreRequests.Add(request);
-            _applicationDB.SaveChanges();
+            _applicationDb.OpenStoreRequests.Add(request);
+            _applicationDb.SaveChanges();
 
             var requestViewModel = mapper.Map<OpenStoreRequest, OpenStoreRequestViewModel>(request);
 
@@ -107,24 +112,23 @@ namespace WebStoreAPI.Controllers
         [HttpPost]
         public ActionResult<OpenStoreRequestViewModel> Accept(int requestId)
         {
-            var request = _applicationDB.OpenStoreRequests.Include(x => x.User).FirstOrDefault(x => x.Id == requestId);
+            var request = _applicationDb.OpenStoreRequests.Include(x => x.User).FirstOrDefault(x => x.Id == requestId);
 
             if (request == null)
                 return NotFound();
 
-            var sellerRole = _roleManager.FindByNameAsync("seller").Result;
+            IdentityRole sellerRole = _roleManager.FindByNameAsync("seller").Result;
             _userManager.AddToRoleAsync(request.User, sellerRole.Name);
 
-            Store store = new Store()
+            var store = new Store()
             {
                 Name = request.StoreName,
                 Seller = request.User
             };
 
-            _applicationDB.Stores.Add(store);
-            _applicationDB.OpenStoreRequests.Remove(request);
-            _applicationDB.SaveChanges();
-
+            _applicationDb.Stores.Add(store);
+            _applicationDb.OpenStoreRequests.Remove(request);
+            _applicationDb.SaveChanges();
 
             var mapperConfig = new MapperConfiguration(cfg =>
             {

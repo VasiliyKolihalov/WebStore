@@ -245,7 +245,7 @@ namespace WebStoreTests
 
             var result = productsController.Post(new ProductAddModel());
 
-            Assert.IsType<BadRequestResult>(result.Result);
+            Assert.IsType<BadRequestObjectResult>(result.Result);
         }
 
         [Fact]
@@ -418,7 +418,7 @@ namespace WebStoreTests
 
             var result = productsController.Put(GetProductPutModel(testProduct));
 
-            Assert.IsType<BadRequestResult>(result.Result);
+            Assert.IsType<BadRequestObjectResult>(result.Result);
 
         }
 

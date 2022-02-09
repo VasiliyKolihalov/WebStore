@@ -16,7 +16,7 @@ namespace WebStoreAPI
 {
     public class Startup
     {
-        public IConfiguration AppConfiguration { get; }
+        private readonly IConfiguration _appConfiguration;
 
         public Startup(IConfiguration configuration)
         {
@@ -25,20 +25,21 @@ namespace WebStoreAPI
                                     .AddJsonFile("companysettings.json")
                                     .AddConfiguration(configuration);
 
-            AppConfiguration = builder.Build();
+            _appConfiguration = builder.Build();
         }
 
         public void ConfigureServices(IServiceCollection services)
         {
             services.AddDbContext<ApplicationContext>(options =>
-              options.UseSqlServer(AppConfiguration.GetConnectionString("DeafultConnection")));
+              options.UseSqlServer(_appConfiguration.GetConnectionString("DefaultConnection")));
 
             services.AddScoped<IApplicationContext>(provider => provider.GetService<ApplicationContext>());
 
             services.AddIdentity<User, IdentityRole>()
-                .AddEntityFrameworkStores<ApplicationContext>();
+                .AddEntityFrameworkStores<ApplicationContext>()
+                .AddDefaultTokenProviders();
 
-            services.AddTransient<IConfiguration>(provider => AppConfiguration);
+            services.AddTransient<IConfiguration>(provider => _appConfiguration);
 
             services.AddHttpContextAccessor();
 
