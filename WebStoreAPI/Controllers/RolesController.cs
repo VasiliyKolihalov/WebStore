@@ -36,7 +36,7 @@ namespace WebStoreAPI.Controllers
                 return BadRequest();
 
             var role = new IdentityRole(name);
-            var result = _roleManager.CreateAsync(role).Result;
+            IdentityResult result = _roleManager.CreateAsync(role).Result;
 
             if (result.Succeeded)
             {
@@ -60,7 +60,7 @@ namespace WebStoreAPI.Controllers
             if (role == null)
                 return NotFound();
 
-            var result = _roleManager.DeleteAsync(role).Result;
+            IdentityResult result = _roleManager.DeleteAsync(role).Result;
 
             if (result.Succeeded)
             {

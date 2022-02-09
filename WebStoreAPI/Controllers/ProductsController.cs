@@ -1,15 +1,13 @@
-﻿using Microsoft.AspNetCore.Http;
-using Microsoft.AspNetCore.Mvc;
+﻿using Microsoft.AspNetCore.Mvc;
 using System;
 using WebStoreAPI.Models;
 using System.Collections.Generic;
+using System.Diagnostics.CodeAnalysis;
 using System.Linq;
-using System.Threading.Tasks;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.EntityFrameworkCore;
 using AutoMapper;
 using Microsoft.AspNetCore.Identity;
-using Microsoft.Extensions.DependencyInjection;
 
 namespace WebStoreAPI.Controllers
 {
@@ -17,13 +15,13 @@ namespace WebStoreAPI.Controllers
     [ApiController]
     public class ProductsController : ControllerBase
     {
-        private readonly IApplicationContext _applicationDB;
+        private readonly IApplicationContext _applicationDb;
         private readonly UserManager<User> _userManager;
         private User _user;
 
         public ProductsController(IApplicationContext productsContext, UserManager<User> userManager)
         {
-            _applicationDB = productsContext;
+            _applicationDb = productsContext;
             _userManager = userManager;
         }
 
@@ -35,7 +33,7 @@ namespace WebStoreAPI.Controllers
         [HttpGet]
         public ActionResult<IEnumerable<ProductViewModel>> GetAll()
         {
-            var products = _applicationDB.Products.Include(x => x.Store);
+            var products = _applicationDb.Products.Include(x => x.Store);
 
             var mapperConfig = new MapperConfiguration(cfg =>
             {
@@ -44,7 +42,7 @@ namespace WebStoreAPI.Controllers
             });
             var mapper = new Mapper(mapperConfig);
 
-            List<ProductViewModel> productViewModels = mapper.Map<IEnumerable<Product>, List<ProductViewModel>>(products);
+            var productViewModels = mapper.Map<IEnumerable<Product>, List<ProductViewModel>>(products);
 
             return productViewModels;
 
@@ -53,7 +51,7 @@ namespace WebStoreAPI.Controllers
         [HttpGet("{id}")]
         public ActionResult<ProductViewModel> Get(long id)
         {
-            var product = _applicationDB.Products.Include(x => x.Store).FirstOrDefault(x => x.Id == id);
+            var product = _applicationDb.Products.Include(x => x.Store).FirstOrDefault(x => x.Id == id);
 
             if (product == null)
                 return NotFound();
@@ -70,16 +68,16 @@ namespace WebStoreAPI.Controllers
 
         }
 
-        [Route("getbasedstore/{storeId}")]
+        [Route("getBasedStore/{storeId}")]
         [HttpGet]
         public ActionResult<IEnumerable<ProductViewModel>> GetBasedStore(int storeId)
         {
-            var store = _applicationDB.Stores.FirstOrDefault(x => x.Id == storeId);
+            var store = _applicationDb.Stores.FirstOrDefault(x => x.Id == storeId);
 
             if (store == null)
                 return NotFound();
 
-            var products = _applicationDB.Products.Include(x => x.Store).Where(x => x.Store.Id == store.Id);
+            var products = _applicationDb.Products.Include(x => x.Store).Where(x => x.Store.Id == store.Id);
 
             var mapperConfig = new MapperConfiguration(cfg =>
             {
@@ -88,20 +86,20 @@ namespace WebStoreAPI.Controllers
             });
             var mapper = new Mapper(mapperConfig);
 
-            var productViewModel = mapper.Map<IEnumerable<Product>, List<ProductViewModel>>(products);
-            return productViewModel;
+            var productViewModels = mapper.Map<IEnumerable<Product>, List<ProductViewModel>>(products);
+            return productViewModels;
         }
 
-        [Route("getbasedcategory/{categoryId}")]
+        [Route("getBasedCategory/{categoryId}")]
         [HttpGet]
         public ActionResult<IEnumerable<ProductViewModel>> GetBasedCategory(int categoryId)
         {
-            var category = _applicationDB.Categories.FirstOrDefault(x => x.Id == categoryId);
+            var category = _applicationDb.Categories.FirstOrDefault(x => x.Id == categoryId);
 
             if (category == null)
                 return NotFound();
 
-            var products = _applicationDB.Products.Include(x => x.Store).Where(x => x.Categories.FirstOrDefault(x => x.Id == categoryId) != null);
+            var products = _applicationDb.Products.Include(x => x.Store).Where(x => x.Categories.FirstOrDefault(x => x.Id == categoryId) != null);
 
             var mapperConfig = new MapperConfiguration(cfg =>
             {
@@ -116,17 +114,16 @@ namespace WebStoreAPI.Controllers
 
         }
 
-        [Route("getbasedtag/{tagId}")]
+        [Route("getBasedTag/{tagId}")]
         [HttpGet]
         public ActionResult<IEnumerable<ProductViewModel>> GetBasedTag(int tagId)
         {
-            var tag = _applicationDB.Tags.FirstOrDefault(x => x.Id == tagId);
+            var tag = _applicationDb.Tags.FirstOrDefault(x => x.Id == tagId);
 
             if (tag == null)
                 return NotFound();
 
-            var products = _applicationDB.Products.Include(x => x.Store).Where(x => x.Tags.FirstOrDefault(x => x.Id == tagId) != null);
-
+            var products = _applicationDb.Products.Include(x => x.Store).Where(x => x.Tags.FirstOrDefault(x => x.Id == tagId) != null);
 
             var mapperConfig = new MapperConfiguration(cfg =>
             {
@@ -145,11 +142,11 @@ namespace WebStoreAPI.Controllers
         public ActionResult<ProductViewModel> Post(ProductAddModel productAddModel)
         {
             if (!ModelState.IsValid)
-                return BadRequest();
+                return BadRequest(ModelState);
 
             SetUser();
 
-            var store = _applicationDB.Stores.Include(x => x.Seller).FirstOrDefault(x => x.Seller.Id == _user.Id);
+            var store = _applicationDb.Stores.Include(x => x.Seller).FirstOrDefault(x => x.Seller.Id == _user.Id);
 
             var mapperConfig = new MapperConfiguration(cfg =>
             {
@@ -163,8 +160,8 @@ namespace WebStoreAPI.Controllers
             var product = mapper.Map<ProductAddModel, Product>(productAddModel);
 
             product.Store = store;
-            _applicationDB.Products.Add(product);
-            _applicationDB.SaveChanges();
+            _applicationDb.Products.Add(product);
+            _applicationDb.SaveChanges();
 
             var productViewModel = mapper.Map<Product, ProductViewModel>(product);
 
@@ -175,7 +172,7 @@ namespace WebStoreAPI.Controllers
         [HttpDelete("{id}")]
         public ActionResult<ProductViewModel> Delete(long id)
         {
-            var product = _applicationDB.Products.Include(x => x.Store).FirstOrDefault(x => x.Id == id);
+            var product = _applicationDb.Products.Include(x => x.Store).FirstOrDefault(x => x.Id == id);
 
             if (product == null)
                 return NotFound();
@@ -186,8 +183,8 @@ namespace WebStoreAPI.Controllers
             if (!userRoles.Contains(RolesConstants.AdminRoleName) && product.Store.Seller.Id != _user.Id)
                 return BadRequest();
 
-            _applicationDB.Products.Remove(product);
-            _applicationDB.SaveChanges();
+            _applicationDb.Products.Remove(product);
+            _applicationDb.SaveChanges();
 
             var mapperConfig = new MapperConfiguration(cfg =>
             {
@@ -206,9 +203,9 @@ namespace WebStoreAPI.Controllers
         public ActionResult<ProductViewModel> Put(ProductPutModel productPutModel)
         {
             if (!ModelState.IsValid)
-                return BadRequest();
+                return BadRequest(ModelState);
 
-            var product = _applicationDB.Products.Include(x => x.Store)
+            var product = _applicationDb.Products.Include(x => x.Store)
                                                  .AsNoTracking()
                                                  .FirstOrDefault(x => x.Id == productPutModel.Id);
 
@@ -231,8 +228,8 @@ namespace WebStoreAPI.Controllers
 
             product = mapper.Map<ProductPutModel, Product>(productPutModel);
 
-            _applicationDB.Products.Update(product);
-            _applicationDB.SaveChanges();
+            _applicationDb.Products.Update(product);
+            _applicationDb.SaveChanges();
 
             var productViewModel = mapper.Map<Product, ProductViewModel>(product);
             return Ok(productViewModel);
@@ -240,16 +237,16 @@ namespace WebStoreAPI.Controllers
 
         #region product categories
 
-        [Route("{productId}/getcategories")]
+        [Route("{productId}/getCategories")]
         [HttpGet]
         public ActionResult<IEnumerable<CategoryViewModel>> GetCategories(long productId)
         {
-            var product = _applicationDB.Products.Include(x => x.Store).FirstOrDefault(x => x.Id == productId);
+            var product = _applicationDb.Products.Include(x => x.Store).FirstOrDefault(x => x.Id == productId);
 
             if (product == null)
                 return NotFound();
 
-            var categories = _applicationDB.Categories.Include(x => x.Parent)
+            var categories = _applicationDb.Categories.Include(x => x.Parent)
                                                       .Include(x => x.Products)
                                                       .Where(x => x.Products.FirstOrDefault(x => x.Id == productId) != null);
 
@@ -263,12 +260,12 @@ namespace WebStoreAPI.Controllers
         }
 
         [Authorize(Roles = RolesConstants.AdminRoleName + ", " + RolesConstants.SellerRoleName)]
-        [Route("{productId}/addcategory/{categoryId}")]
+        [Route("{productId}/addСategory/{categoryId}")]
         [HttpPost]
         public ActionResult<CategoryViewModel> AddCategory(int productId, int categoryId)
         {
-            var category = _applicationDB.Categories.Include(x => x.Parent).FirstOrDefault(x => x.Id == categoryId);
-            var product = _applicationDB.Products.Include(x => x.Categories).Include(x => x.Store).FirstOrDefault(x => x.Id == productId);
+            var category = _applicationDb.Categories.Include(x => x.Parent).FirstOrDefault(x => x.Id == categoryId);
+            var product = _applicationDb.Products.Include(x => x.Categories).Include(x => x.Store).FirstOrDefault(x => x.Id == productId);
 
             if (category == null || product == null)
                 return NotFound();
@@ -278,15 +275,14 @@ namespace WebStoreAPI.Controllers
 
             if (!userRoles.Contains(RolesConstants.AdminRoleName) && product.Store.Seller.Id != _user.Id)
                 return BadRequest();
-
-
+            
             if (product.Categories.Contains(category))
                 return BadRequest();
 
             product.Categories.Add(category);
 
-            _applicationDB.Products.Update(product);
-            _applicationDB.SaveChanges();
+            _applicationDb.Products.Update(product);
+            _applicationDb.SaveChanges();
 
             var mapperConfig = new MapperConfiguration(cfg => cfg.CreateMap<Category, CategoryViewModel>()
                                                                  .ForMember(nameof(CategoryViewModel.ParentId), opt =>
@@ -299,12 +295,12 @@ namespace WebStoreAPI.Controllers
         }
 
         [Authorize(Roles = RolesConstants.AdminRoleName + ", " + RolesConstants.SellerRoleName)]
-        [Route("{productId}/removecategory/{categoryId}")]
+        [Route("{productId}/removeСategory/{categoryId}")]
         [HttpDelete]
         public ActionResult<CategoryViewModel> RemoveCategory(int productId, int categoryId)
         {
-            var category = _applicationDB.Categories.Include(x => x.Parent).FirstOrDefault(x => x.Id == categoryId);
-            var product = _applicationDB.Products.Include(x => x.Categories).Include(x => x.Store).FirstOrDefault(x => x.Id == productId);
+            var category = _applicationDb.Categories.Include(x => x.Parent).FirstOrDefault(x => x.Id == categoryId);
+            var product = _applicationDb.Products.Include(x => x.Categories).Include(x => x.Store).FirstOrDefault(x => x.Id == productId);
 
             if (category == null || product == null || !product.Categories.Contains(category))
                 return NotFound();
@@ -317,8 +313,8 @@ namespace WebStoreAPI.Controllers
 
             product.Categories.Remove(category);
 
-            _applicationDB.Products.Update(product);
-            _applicationDB.SaveChanges();
+            _applicationDb.Products.Update(product);
+            _applicationDb.SaveChanges();
 
             var mapperConfig = new MapperConfiguration(cfg => cfg.CreateMap<Category, CategoryViewModel>()
                                                                  .ForMember(nameof(CategoryViewModel.ParentId), opt => opt.MapFrom(x => x.Parent.Id)));
@@ -333,12 +329,12 @@ namespace WebStoreAPI.Controllers
 
         #region product images
 
-        [Route("{productId}/getimages")]
+        [Route("{productId}/getImages")]
         [HttpGet]
         public ActionResult<IEnumerable<Base64ImagePutModel>> GetImages(long productId)
         {
             SetUser();
-            var product = _applicationDB.Products.Include(x => x.Images).Include(x => x.Store).FirstOrDefault(x => x.Id == productId);
+            var product = _applicationDb.Products.Include(x => x.Images).Include(x => x.Store).FirstOrDefault(x => x.Id == productId);
 
 
             if (product == null)
@@ -358,13 +354,13 @@ namespace WebStoreAPI.Controllers
         }
 
         [Authorize(Roles = RolesConstants.AdminRoleName + ", " + RolesConstants.SellerRoleName)]
-        [Route("{productId}/addimage/{imageId}")]
+        [Route("{productId}/addImage/{imageId}")]
         [HttpPost]
         public ActionResult<Base64ImagePutModel> AddImage(long productId, long imageId)
         {
-            var image = _applicationDB.Images.Include(x => x.User).FirstOrDefault(x => x.Id == imageId);
+            var image = _applicationDb.Images.Include(x => x.User).FirstOrDefault(x => x.Id == imageId);
 
-            var product = _applicationDB.Products.Include(x => x.Images).Include(x => x.Store).FirstOrDefault(x => x.Id == productId);
+            var product = _applicationDb.Products.Include(x => x.Images).Include(x => x.Store).FirstOrDefault(x => x.Id == productId);
 
             if (image == null || product == null)
                 return NotFound();
@@ -380,14 +376,13 @@ namespace WebStoreAPI.Controllers
 
             product.Images.Add(image);
 
-            _applicationDB.Products.Update(product);
-            _applicationDB.SaveChanges();
+            _applicationDb.Products.Update(product);
+            _applicationDb.SaveChanges();
 
             var mapperConfig = new MapperConfiguration(cfg =>
             {
                 cfg.CreateMap<Image, Base64ImagePutModel>().ForMember(nameof(Base64ImagePutModel.ImageData), opt => opt
                                                            .MapFrom(x => Convert.ToBase64String(x.ImageData)));
-
             });
             var mapper = new Mapper(mapperConfig);
 
@@ -397,16 +392,15 @@ namespace WebStoreAPI.Controllers
         }
 
         [Authorize(Roles = RolesConstants.AdminRoleName + ", " + RolesConstants.SellerRoleName)]
-        [Route("{productId}/removeimage/{imageId}")]
+        [Route("{productId}/removeImage/{imageId}")]
         [HttpDelete]
         public ActionResult<Base64ImagePutModel> RemoveImage(long productId, long imageId)
         {
-            var image = _applicationDB.Images.Include(x => x.User).FirstOrDefault(x => x.Id == imageId);
-            var product = _applicationDB.Products.Include(x => x.Images).Include(x => x.Store).FirstOrDefault(x => x.Id == productId);
+            var image = _applicationDb.Images.Include(x => x.User).FirstOrDefault(x => x.Id == imageId);
+            var product = _applicationDb.Products.Include(x => x.Images).Include(x => x.Store).FirstOrDefault(x => x.Id == productId);
 
             if (image == null || product == null || !product.Images.Contains(image))
                 return NotFound();
-
 
             SetUser();
             IList<string> userRoles = _userManager.GetRolesAsync(_user).Result;
@@ -415,8 +409,8 @@ namespace WebStoreAPI.Controllers
                 return BadRequest();
 
             product.Images.Remove(image);
-            _applicationDB.Products.Update(product);
-            _applicationDB.SaveChanges();
+            _applicationDb.Products.Update(product);
+            _applicationDb.SaveChanges();
 
             var mapperConfig = new MapperConfiguration(cfg =>
             {
@@ -438,7 +432,7 @@ namespace WebStoreAPI.Controllers
         [HttpGet]
         public ActionResult<IEnumerable<TagViewModel>> GetTags(long productId)
         {
-            var product = _applicationDB.Products.Include(x => x.Tags).Include(x => x.Store).FirstOrDefault(x => x.Id == productId);
+            var product = _applicationDb.Products.Include(x => x.Tags).Include(x => x.Store).FirstOrDefault(x => x.Id == productId);
 
             if (product == null)
                 return NotFound();
@@ -455,13 +449,13 @@ namespace WebStoreAPI.Controllers
 
 
         [Authorize(Roles = RolesConstants.AdminRoleName)]
-        [Route("{productId}/addtag/{tagId}")]
+        [Route("{productId}/addTag/{tagId}")]
         [HttpPost]
         public ActionResult<TagViewModel> AddTag(long productId, int tagId)
         {
-            var product = _applicationDB.Products.Include(x => x.Tags).FirstOrDefault(x => x.Id == productId);
+            var product = _applicationDb.Products.Include(x => x.Tags).FirstOrDefault(x => x.Id == productId);
 
-            var tag = _applicationDB.Tags.FirstOrDefault(x => x.Id == tagId);
+            var tag = _applicationDb.Tags.FirstOrDefault(x => x.Id == tagId);
 
             if (product == null || tag == null)
                 return NotFound();
@@ -471,8 +465,8 @@ namespace WebStoreAPI.Controllers
 
             product.Tags.Add(tag);
 
-            _applicationDB.Products.Update(product);
-            _applicationDB.SaveChanges();
+            _applicationDb.Products.Update(product);
+            _applicationDb.SaveChanges();
 
             var mapperConfig = new MapperConfiguration(cfg => cfg.CreateMap<Tag, TagViewModel>());
             var mapper = new Mapper(mapperConfig);
@@ -483,13 +477,13 @@ namespace WebStoreAPI.Controllers
         }
 
         [Authorize(Roles = RolesConstants.AdminRoleName)]
-        [Route("{productId}/removetag/{tagId}")]
+        [Route("{productId}/removeTag/{tagId}")]
         [HttpDelete]
         public ActionResult<TagViewModel> RemoveTag(long productId, int tagId)
         {
-            var product = _applicationDB.Products.Include(x => x.Tags).FirstOrDefault(x => x.Id == productId);
+            var product = _applicationDb.Products.Include(x => x.Tags).FirstOrDefault(x => x.Id == productId);
 
-            var tag = _applicationDB.Tags.FirstOrDefault(x => x.Id == tagId);
+            var tag = _applicationDb.Tags.FirstOrDefault(x => x.Id == tagId);
 
             if (product == null || tag == null)
                 return NotFound();
@@ -499,8 +493,8 @@ namespace WebStoreAPI.Controllers
 
             product.Tags.Remove(tag);
 
-            _applicationDB.Products.Update(product);
-            _applicationDB.SaveChanges();
+            _applicationDb.Products.Update(product);
+            _applicationDb.SaveChanges();
 
             var mapperConfig = new MapperConfiguration(cfg => cfg.CreateMap<Tag, TagViewModel>());
             var mapper = new Mapper(mapperConfig);

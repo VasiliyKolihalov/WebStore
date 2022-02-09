@@ -17,13 +17,13 @@ namespace WebStoreAPI.Controllers
     [ApiController]
     public class StoresController : ControllerBase
     {
-        private readonly IApplicationContext _applicationDB;
+        private readonly IApplicationContext _applicationDb;
         private readonly UserManager<User> _userManager;
         private User _user;
 
         public StoresController(IApplicationContext applicationContext, UserManager<User> userManager)
         {
-            _applicationDB = applicationContext;
+            _applicationDb = applicationContext;
             _userManager = userManager;
         }
 
@@ -35,7 +35,7 @@ namespace WebStoreAPI.Controllers
         [HttpGet]
         public ActionResult<IEnumerable<StoreViewModel>> GetAll()
         {
-            var stores = _applicationDB.Stores.Include(x => x.Seller);
+            var stores = _applicationDb.Stores.Include(x => x.Seller);
 
             var mapperConfig = new MapperConfiguration(cfg =>
             {
@@ -52,7 +52,7 @@ namespace WebStoreAPI.Controllers
         [HttpGet("{storeId}")]
         public ActionResult<StoreViewModel> Get(int storeId)
         {
-            var store = _applicationDB.Stores.FirstOrDefault(x => x.Id == storeId);
+            var store = _applicationDb.Stores.FirstOrDefault(x => x.Id == storeId);
 
             if (store == null)
                 return NotFound();
@@ -79,7 +79,7 @@ namespace WebStoreAPI.Controllers
             SetUser();
             IList<string> userRoles = _userManager.GetRolesAsync(_user).Result;
 
-            var store = _applicationDB.Stores.Include(x => x.Seller).FirstOrDefault(x => x.Id == storeId);
+            var store = _applicationDb.Stores.Include(x => x.Seller).FirstOrDefault(x => x.Id == storeId);
 
             if (store == null)
                 return NotFound();
@@ -87,8 +87,8 @@ namespace WebStoreAPI.Controllers
             if (!userRoles.Contains("admin") && store.Seller.Id != _user.Id)               
                     return BadRequest();
 
-            _applicationDB.Stores.Remove(store);
-            _applicationDB.SaveChanges();
+            _applicationDb.Stores.Remove(store);
+            _applicationDb.SaveChanges();
 
             var mapperConfig = new MapperConfiguration(cfg =>
             {
@@ -106,10 +106,13 @@ namespace WebStoreAPI.Controllers
         [HttpPut]
         public ActionResult<StoreViewModel> Put(StorePutModel storePutModel)
         {
+            if (!ModelState.IsValid)
+                return BadRequest(ModelState);
+            
             SetUser();
             IList<string> userRoles = _userManager.GetRolesAsync(_user).Result;
 
-            var store = _applicationDB.Stores.Include(x => x.Seller)
+            var store = _applicationDb.Stores.Include(x => x.Seller)
                                              .AsNoTracking()
                                              .FirstOrDefault(x => x.Id == storePutModel.Id);
             if (store == null)
@@ -123,8 +126,8 @@ namespace WebStoreAPI.Controllers
 
             store = mapper.Map<StorePutModel, Store>(storePutModel);
 
-            _applicationDB.Stores.Update(store);
-            _applicationDB.SaveChanges();
+            _applicationDb.Stores.Update(store);
+            _applicationDb.SaveChanges();
 
             return Ok(storePutModel);
         }

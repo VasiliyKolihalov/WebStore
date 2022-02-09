@@ -48,10 +48,10 @@ namespace WebStoreAPI.Controllers
             if (user == null)
                 return NotFound();
 
-            var result = _userManager.DeleteAsync(user).Result;
+            IdentityResult result = _userManager.DeleteAsync(user).Result;
 
             var mapperConfig = new MapperConfiguration(cfg => cfg.CreateMap<User, UserViewModel>().ForMember(nameof(UserViewModel.Name), opt =>
-                                                                                                   opt.MapFrom(x => x.UserName)));
+                                                                                                        opt.MapFrom(x => x.UserName)));
             var mapper = new Mapper(mapperConfig);
 
             if (result.Succeeded)
@@ -70,7 +70,7 @@ namespace WebStoreAPI.Controllers
         }
 
         [HttpPost]
-        [Route("{userId}/addrole/{roleName}")]
+        [Route("{userId}/addRole/{roleName}")]
         public ActionResult<UserViewModel> AddRole(string userId, string roleName)
         {
             var user = _userManager.FindByIdAsync(userId).Result;
@@ -78,7 +78,7 @@ namespace WebStoreAPI.Controllers
             if (user == null || role == null)
                 return NotFound();
 
-            var result = _userManager.AddToRoleAsync(user, role.Name).Result;
+            IdentityResult result = _userManager.AddToRoleAsync(user, role.Name).Result;
 
             var mapperConfig = new MapperConfiguration(cfg => cfg.CreateMap<User, UserViewModel>().ForMember(nameof(UserViewModel.Name), opt =>
                                                                                                   opt.MapFrom(x => x.UserName)));
@@ -101,7 +101,7 @@ namespace WebStoreAPI.Controllers
         }
 
         [HttpPost]
-        [Route("{userId}/removerole/{roleName}")]
+        [Route("{userId}/removeRole/{roleName}")]
         public ActionResult<User> RemoveRole(string userId, string roleName)
         {
             var user = _userManager.FindByIdAsync(userId).Result;
@@ -109,7 +109,7 @@ namespace WebStoreAPI.Controllers
             if (user == null || role == null)
                 return NotFound();
 
-            var result = _userManager.RemoveFromRoleAsync(user, role.Name).Result;
+            IdentityResult result = _userManager.RemoveFromRoleAsync(user, role.Name).Result;
 
             var mapperConfig = new MapperConfiguration(cfg => cfg.CreateMap<User, UserViewModel>().ForMember(nameof(UserViewModel.Name), opt =>
                                                                                                   opt.MapFrom(x => x.UserName)));
@@ -130,8 +130,5 @@ namespace WebStoreAPI.Controllers
                 return BadRequest(ModelState);
             }
         }
-
-
-
     }
 }

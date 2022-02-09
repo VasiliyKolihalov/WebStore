@@ -17,13 +17,13 @@ namespace WebStoreAPI.Controllers
     [ApiController]
     public class ImagesController : ControllerBase
     {
-        private readonly ApplicationContext _applicationDB;
+        private readonly ApplicationContext _applicationDb;
         private readonly UserManager<User> _userManager;
         private User _user;
 
         public ImagesController(ApplicationContext applicationContext, UserManager<User> userManager)
         {
-            _applicationDB = applicationContext;
+            _applicationDb = applicationContext;
             _userManager = userManager;
         }
 
@@ -36,8 +36,7 @@ namespace WebStoreAPI.Controllers
         public ActionResult<IEnumerable<Base64ImageViewModel>> GetAll()
         {
             SetUser();
-            var images = _applicationDB.Images.Include(x => x.User).Where(x => x.User.Id == _user.Id);
-
+            var images = _applicationDb.Images.Include(x => x.User).Where(x => x.User.Id == _user.Id);
 
             var mapperConfig = new MapperConfiguration(cfg =>
             {
@@ -61,8 +60,15 @@ namespace WebStoreAPI.Controllers
         public ActionResult<Image> Post(Base64ImageAddModel imageAddModel)
         {
             if (!ModelState.IsValid)
-                return BadRequest();
-
+                return BadRequest(ModelState);
+            
+            SetUser();
+            if (!_user.EmailConfirmed)
+            {
+                ModelState.AddModelError(string.Empty, "email not confirmed");
+                return BadRequest(ModelState);
+            }
+            
             var mapperConfig = new MapperConfiguration(cfg =>
             {
                 cfg.CreateMap<Base64ImageAddModel, Image>()
@@ -83,17 +89,16 @@ namespace WebStoreAPI.Controllers
             }
             catch
             {
-                return BadRequest("base64 conversion error");
+                ModelState.AddModelError(string.Empty, "base64 converting error");
+                return BadRequest(ModelState);
             }
 
-            SetUser();
             image.User = _user;
 
-            _applicationDB.Images.Add(image);
-            _applicationDB.SaveChanges();
+            _applicationDb.Images.Add(image);
+            _applicationDb.SaveChanges();
 
             var base64ImageViewModel = mapper.Map<Image, Base64ImageViewModel>(image);
-
             return Ok(base64ImageViewModel);
         }
 
@@ -101,9 +106,9 @@ namespace WebStoreAPI.Controllers
         public ActionResult<Base64ImageViewModel> Put(Base64ImagePutModel imagePutModel)
         {
             if (!ModelState.IsValid)
-                return BadRequest();
+                return BadRequest(ModelState);
 
-            var image = _applicationDB.Images.Include(x => x.User).AsNoTracking().FirstOrDefault(x => x.Id == imagePutModel.Id);
+            var image = _applicationDb.Images.Include(x => x.User).AsNoTracking().FirstOrDefault(x => x.Id == imagePutModel.Id);
 
             if (image == null)
                 return NotFound();
@@ -130,21 +135,21 @@ namespace WebStoreAPI.Controllers
             }
             catch
             {
-                return BadRequest("base64 conversion error");
+                ModelState.AddModelError(string.Empty, "base64 converting error");
+                return BadRequest(ModelState);
             }
 
-            _applicationDB.Images.Update(image);
-            _applicationDB.SaveChanges();
+            _applicationDb.Images.Update(image);
+            _applicationDb.SaveChanges();
 
             var base64ImageViewModel = mapper.Map<Image, Base64ImageViewModel>(image);
-
             return Ok(base64ImageViewModel);
         }
 
         [HttpDelete("{imageId}")]
         public ActionResult<Base64ImageViewModel> Delete(long imageId)
         {
-            var image = _applicationDB.Images.Include(x => x.User).FirstOrDefault(x => x.Id == imageId);
+            var image = _applicationDb.Images.Include(x => x.User).FirstOrDefault(x => x.Id == imageId);
 
             if (image == null)
                 return NotFound();
@@ -153,8 +158,8 @@ namespace WebStoreAPI.Controllers
             if (image.User.Id != _user.Id)
                 return BadRequest();
 
-            _applicationDB.Remove(image);
-            _applicationDB.SaveChanges();
+            _applicationDb.Remove(image);
+            _applicationDb.SaveChanges();
 
             var mapperConfig = new MapperConfiguration(cfg =>
             {
