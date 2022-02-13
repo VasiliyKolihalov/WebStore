@@ -2,12 +2,12 @@
 using System;
 using WebStoreAPI.Models;
 using System.Collections.Generic;
-using System.Diagnostics.CodeAnalysis;
 using System.Linq;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.EntityFrameworkCore;
 using AutoMapper;
 using Microsoft.AspNetCore.Identity;
+using Microsoft.EntityFrameworkCore.Query;
 
 namespace WebStoreAPI.Controllers
 {
@@ -45,7 +45,6 @@ namespace WebStoreAPI.Controllers
             var productViewModels = mapper.Map<IEnumerable<Product>, List<ProductViewModel>>(products);
 
             return productViewModels;
-
         }
 
         [HttpGet("{id}")]
@@ -65,7 +64,99 @@ namespace WebStoreAPI.Controllers
             var productViewModel = mapper.Map<Product, ProductViewModel>(product);
 
             return productViewModel;
+        }
 
+        [Route("getBasedPage")]
+        [HttpGet]
+        public ActionResult<PageViewModel> GetBasedPage(PageGetModel pageGetModel)
+        {
+            if (!ModelState.IsValid)
+                return BadRequest(ModelState);
+
+            var categories = _applicationDb.Categories
+                .Include(x => x.Products)
+                .Include(x => x.Parent)
+                .Where(x => pageGetModel.CategoriesId.Contains(x.Id)).ToList();
+            var stores = _applicationDb.Stores
+                .Include(x => x.Products)
+                .Include(x => x.Seller)
+                .Where(x => pageGetModel.StoresId.Contains(x.Id)).ToList();
+
+            Func<Product, double> ordenBy = null;
+            if (pageGetModel.OrderBy == PageOrder.Cost)
+                ordenBy = x => (double) x.Cost;
+
+            Func<Product, bool> selectBy = null;
+            if (pageGetModel.CategoriesId.Any())
+            {
+                if (!categories.Any())
+                    return NotFound("not found categories");
+                selectBy += product => categories.Intersect(product.Categories).Any();
+            }
+
+            if (pageGetModel.StoresId.Any())
+            {
+                if (!stores.Any())
+                    return NotFound("not found stores");
+                selectBy += product => stores.Contains(product.Store);
+            }
+
+            IEnumerable<Product> products = _applicationDb.Products.Include(x => x.Store);
+            if (selectBy != null)
+                products = products.Where(selectBy);
+            if (ordenBy != null)
+                products = pageGetModel.InAscending ? products.OrderBy(ordenBy) : products.OrderByDescending(ordenBy);
+
+            int count = products.Count();
+            var pageProducts = products.Skip((pageGetModel.PageNumber - 1) * pageGetModel.PageSize)
+                .Take(pageGetModel.PageSize).ToList();
+
+            var mapperConfig = new MapperConfiguration(cfg =>
+            {
+                cfg.CreateMap<Product, ProductViewModel>();
+                cfg.CreateMap<Store, StorePutModel>();
+                cfg.CreateMap<Category, CategoryViewModel>()
+                    .ForMember(nameof(CategoryViewModel.ParentId), opt => opt.MapFrom(x => x.Parent.Id));
+            });
+            var mapper = new Mapper(mapperConfig);
+
+            var productsViewModel = mapper.Map<IEnumerable<Product>, List<ProductViewModel>>(pageProducts);
+
+            PageData pageData = new PageData(count, pageGetModel.PageNumber, pageGetModel.PageSize)
+            {
+                InAscending = pageGetModel.InAscending,
+                OrderBy = pageGetModel.OrderBy,
+                Categories = mapper.Map<IEnumerable<Category>, List<CategoryViewModel>>(categories),
+                Stores = mapper.Map<IEnumerable<Store>, List<StorePutModel>>(stores)
+            };
+            PageViewModel pageViewModel = new PageViewModel()
+            {
+                Products = productsViewModel,
+                PageData = pageData
+            };
+            return pageViewModel;
+        }
+
+        [Route("getBasedKeyword/{keyWord}")]
+        [HttpGet]
+        public ActionResult<IEnumerable<ProductViewModel>> GetBasedKeyword(string keyWord)
+        {
+            var loverKeyWord = keyWord.ToLower();
+            var products = _applicationDb.Products.Include(x => x.Store)
+                .Where(x => x.Name.ToLower().Contains(loverKeyWord) ||
+                            x.Description.ToLower().Contains(loverKeyWord));
+            if (!products.Any())
+                return NotFound();
+
+            var mapperConfig = new MapperConfiguration(cfg =>
+            {
+                cfg.CreateMap<Product, ProductViewModel>();
+                cfg.CreateMap<Store, StorePutModel>();
+            });
+            var mapper = new Mapper(mapperConfig);
+
+            var productViewModels = mapper.Map<IEnumerable<Product>, List<ProductViewModel>>(products);
+            return productViewModels;
         }
 
         [Route("getBasedStore/{storeId}")]
@@ -99,7 +190,8 @@ namespace WebStoreAPI.Controllers
             if (category == null)
                 return NotFound();
 
-            var products = _applicationDb.Products.Include(x => x.Store).Where(x => x.Categories.FirstOrDefault(x => x.Id == categoryId) != null);
+            var products = _applicationDb.Products.Include(x => x.Store)
+                .Where(x => x.Categories.FirstOrDefault(x => x.Id == categoryId) != null);
 
             var mapperConfig = new MapperConfiguration(cfg =>
             {
@@ -111,7 +203,6 @@ namespace WebStoreAPI.Controllers
             var productsViewModels = mapper.Map<IEnumerable<Product>, List<ProductViewModel>>(products);
 
             return productsViewModels;
-
         }
 
         [Route("getBasedTag/{tagId}")]
@@ -123,7 +214,8 @@ namespace WebStoreAPI.Controllers
             if (tag == null)
                 return NotFound();
 
-            var products = _applicationDb.Products.Include(x => x.Store).Where(x => x.Tags.FirstOrDefault(x => x.Id == tagId) != null);
+            var products = _applicationDb.Products.Include(x => x.Store)
+                .Where(x => x.Tags.FirstOrDefault(x => x.Id == tagId) != null);
 
             var mapperConfig = new MapperConfiguration(cfg =>
             {
@@ -206,8 +298,8 @@ namespace WebStoreAPI.Controllers
                 return BadRequest(ModelState);
 
             var product = _applicationDb.Products.Include(x => x.Store)
-                                                 .AsNoTracking()
-                                                 .FirstOrDefault(x => x.Id == productPutModel.Id);
+                .AsNoTracking()
+                .FirstOrDefault(x => x.Id == productPutModel.Id);
 
             if (product == null)
                 return NotFound();
@@ -247,11 +339,11 @@ namespace WebStoreAPI.Controllers
                 return NotFound();
 
             var categories = _applicationDb.Categories.Include(x => x.Parent)
-                                                      .Include(x => x.Products)
-                                                      .Where(x => x.Products.FirstOrDefault(x => x.Id == productId) != null);
+                .Include(x => x.Products)
+                .Where(x => x.Products.FirstOrDefault(x => x.Id == productId) != null);
 
             var mapperConfig = new MapperConfiguration(cfg => cfg.CreateMap<Category, CategoryViewModel>()
-                                                                 .ForMember(nameof(CategoryViewModel.ParentId), opt => opt.MapFrom(x => x.Parent.Id)));
+                .ForMember(nameof(CategoryViewModel.ParentId), opt => opt.MapFrom(x => x.Parent.Id)));
             var mapper = new Mapper(mapperConfig);
 
             var categoryViewModels = mapper.Map<IEnumerable<Category>, List<CategoryViewModel>>(categories);
@@ -265,7 +357,8 @@ namespace WebStoreAPI.Controllers
         public ActionResult<CategoryViewModel> AddCategory(int productId, int categoryId)
         {
             var category = _applicationDb.Categories.Include(x => x.Parent).FirstOrDefault(x => x.Id == categoryId);
-            var product = _applicationDb.Products.Include(x => x.Categories).Include(x => x.Store).FirstOrDefault(x => x.Id == productId);
+            var product = _applicationDb.Products.Include(x => x.Categories).Include(x => x.Store)
+                .FirstOrDefault(x => x.Id == productId);
 
             if (category == null || product == null)
                 return NotFound();
@@ -275,7 +368,7 @@ namespace WebStoreAPI.Controllers
 
             if (!userRoles.Contains(RolesConstants.AdminRoleName) && product.Store.Seller.Id != _user.Id)
                 return BadRequest();
-            
+
             if (product.Categories.Contains(category))
                 return BadRequest();
 
@@ -285,8 +378,8 @@ namespace WebStoreAPI.Controllers
             _applicationDb.SaveChanges();
 
             var mapperConfig = new MapperConfiguration(cfg => cfg.CreateMap<Category, CategoryViewModel>()
-                                                                 .ForMember(nameof(CategoryViewModel.ParentId), opt =>
-                                                                 opt.MapFrom(x => x.Parent.Id)));
+                .ForMember(nameof(CategoryViewModel.ParentId), opt =>
+                    opt.MapFrom(x => x.Parent.Id)));
             var mapper = new Mapper(mapperConfig);
 
             var categoryViewModel = mapper.Map<Category, CategoryViewModel>(category);
@@ -300,7 +393,8 @@ namespace WebStoreAPI.Controllers
         public ActionResult<CategoryViewModel> RemoveCategory(int productId, int categoryId)
         {
             var category = _applicationDb.Categories.Include(x => x.Parent).FirstOrDefault(x => x.Id == categoryId);
-            var product = _applicationDb.Products.Include(x => x.Categories).Include(x => x.Store).FirstOrDefault(x => x.Id == productId);
+            var product = _applicationDb.Products.Include(x => x.Categories).Include(x => x.Store)
+                .FirstOrDefault(x => x.Id == productId);
 
             if (category == null || product == null || !product.Categories.Contains(category))
                 return NotFound();
@@ -317,7 +411,7 @@ namespace WebStoreAPI.Controllers
             _applicationDb.SaveChanges();
 
             var mapperConfig = new MapperConfiguration(cfg => cfg.CreateMap<Category, CategoryViewModel>()
-                                                                 .ForMember(nameof(CategoryViewModel.ParentId), opt => opt.MapFrom(x => x.Parent.Id)));
+                .ForMember(nameof(CategoryViewModel.ParentId), opt => opt.MapFrom(x => x.Parent.Id)));
             var mapper = new Mapper(mapperConfig);
 
             var categoryViewModel = mapper.Map<Category, CategoryViewModel>(category);
@@ -334,7 +428,8 @@ namespace WebStoreAPI.Controllers
         public ActionResult<IEnumerable<Base64ImagePutModel>> GetImages(long productId)
         {
             SetUser();
-            var product = _applicationDb.Products.Include(x => x.Images).Include(x => x.Store).FirstOrDefault(x => x.Id == productId);
+            var product = _applicationDb.Products.Include(x => x.Images).Include(x => x.Store)
+                .FirstOrDefault(x => x.Id == productId);
 
 
             if (product == null)
@@ -345,11 +440,12 @@ namespace WebStoreAPI.Controllers
             var mapperConfig = new MapperConfiguration(cfg =>
             {
                 cfg.CreateMap<Image, Base64ImagePutModel>().ForMember(nameof(Base64ImagePutModel.ImageData), opt => opt
-                                                            .MapFrom(x => Convert.ToBase64String(x.ImageData)));
+                    .MapFrom(x => Convert.ToBase64String(x.ImageData)));
             });
             var mapper = new Mapper(mapperConfig);
 
-            List<Base64ImagePutModel> base64ImageViewModels = mapper.Map<IEnumerable<Image>, List<Base64ImagePutModel>>(images);
+            List<Base64ImagePutModel> base64ImageViewModels =
+                mapper.Map<IEnumerable<Image>, List<Base64ImagePutModel>>(images);
             return base64ImageViewModels;
         }
 
@@ -360,7 +456,8 @@ namespace WebStoreAPI.Controllers
         {
             var image = _applicationDb.Images.Include(x => x.User).FirstOrDefault(x => x.Id == imageId);
 
-            var product = _applicationDb.Products.Include(x => x.Images).Include(x => x.Store).FirstOrDefault(x => x.Id == productId);
+            var product = _applicationDb.Products.Include(x => x.Images).Include(x => x.Store)
+                .FirstOrDefault(x => x.Id == productId);
 
             if (image == null || product == null)
                 return NotFound();
@@ -382,7 +479,7 @@ namespace WebStoreAPI.Controllers
             var mapperConfig = new MapperConfiguration(cfg =>
             {
                 cfg.CreateMap<Image, Base64ImagePutModel>().ForMember(nameof(Base64ImagePutModel.ImageData), opt => opt
-                                                           .MapFrom(x => Convert.ToBase64String(x.ImageData)));
+                    .MapFrom(x => Convert.ToBase64String(x.ImageData)));
             });
             var mapper = new Mapper(mapperConfig);
 
@@ -397,7 +494,8 @@ namespace WebStoreAPI.Controllers
         public ActionResult<Base64ImagePutModel> RemoveImage(long productId, long imageId)
         {
             var image = _applicationDb.Images.Include(x => x.User).FirstOrDefault(x => x.Id == imageId);
-            var product = _applicationDb.Products.Include(x => x.Images).Include(x => x.Store).FirstOrDefault(x => x.Id == productId);
+            var product = _applicationDb.Products.Include(x => x.Images).Include(x => x.Store)
+                .FirstOrDefault(x => x.Id == productId);
 
             if (image == null || product == null || !product.Images.Contains(image))
                 return NotFound();
@@ -415,8 +513,7 @@ namespace WebStoreAPI.Controllers
             var mapperConfig = new MapperConfiguration(cfg =>
             {
                 cfg.CreateMap<Image, Base64ImagePutModel>().ForMember(nameof(Base64ImagePutModel.ImageData), opt => opt
-                                                           .MapFrom(x => Convert.ToBase64String(x.ImageData)));
-
+                    .MapFrom(x => Convert.ToBase64String(x.ImageData)));
             });
             var mapper = new Mapper(mapperConfig);
 
@@ -424,6 +521,7 @@ namespace WebStoreAPI.Controllers
 
             return Ok(base64ImageViewModel);
         }
+
         #endregion
 
         #region product tags
@@ -432,7 +530,8 @@ namespace WebStoreAPI.Controllers
         [HttpGet]
         public ActionResult<IEnumerable<TagViewModel>> GetTags(long productId)
         {
-            var product = _applicationDb.Products.Include(x => x.Tags).Include(x => x.Store).FirstOrDefault(x => x.Id == productId);
+            var product = _applicationDb.Products.Include(x => x.Tags).Include(x => x.Store)
+                .FirstOrDefault(x => x.Id == productId);
 
             if (product == null)
                 return NotFound();
@@ -505,7 +604,5 @@ namespace WebStoreAPI.Controllers
         }
 
         #endregion
-
     }
-
 }

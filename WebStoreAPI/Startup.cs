@@ -10,6 +10,7 @@ using WebStoreAPI.Models;
 using System.Collections.Generic;
 using Microsoft.EntityFrameworkCore;
 using System.Linq;
+using System.Text.Json.Serialization;
 using System.Threading.Tasks;
 
 namespace WebStoreAPI
@@ -21,9 +22,9 @@ namespace WebStoreAPI
         public Startup(IConfiguration configuration)
         {
             var builder = new ConfigurationBuilder()
-                                    .AddJsonFile("adminsettings.json")
-                                    .AddJsonFile("companysettings.json")
-                                    .AddConfiguration(configuration);
+                .AddJsonFile("adminsettings.json")
+                .AddJsonFile("companysettings.json")
+                .AddConfiguration(configuration);
 
             _appConfiguration = builder.Build();
         }
@@ -31,7 +32,7 @@ namespace WebStoreAPI
         public void ConfigureServices(IServiceCollection services)
         {
             services.AddDbContext<ApplicationContext>(options =>
-              options.UseSqlServer(_appConfiguration.GetConnectionString("DefaultConnection")));
+                options.UseSqlServer(_appConfiguration.GetConnectionString("DefaultConnection")));
 
             services.AddScoped<IApplicationContext>(provider => provider.GetService<ApplicationContext>());
 
@@ -43,7 +44,8 @@ namespace WebStoreAPI
 
             services.AddHttpContextAccessor();
 
-            services.AddControllers();
+            services.AddControllers()
+                .AddJsonOptions(opts => opts.JsonSerializerOptions.Converters.Add(new JsonStringEnumConverter()));
         }
 
         public void Configure(IApplicationBuilder app, IWebHostEnvironment env)
@@ -57,11 +59,7 @@ namespace WebStoreAPI
             app.UseAuthentication();
             app.UseAuthorization();
 
-            app.UseEndpoints(endpoints =>
-            {
-                endpoints.MapControllers();
-            });
-
+            app.UseEndpoints(endpoints => { endpoints.MapControllers(); });
         }
     }
 }
