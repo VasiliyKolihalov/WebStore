@@ -10,7 +10,7 @@ using AutoMapper;
 
 namespace WebStoreAPI.Controllers
 {
-    [Authorize(Roles = RolesConstants.AdminRoleName)]
+    [Authorize(Roles = ApplicationConstants.AdminRoleName)]
     [Route("api/[controller]")]
     [ApiController]
     public class TagsController : ControllerBase
@@ -35,10 +35,10 @@ namespace WebStoreAPI.Controllers
             return tagViewModels;
         }
 
-        [HttpGet("{id}")]
-        public ActionResult<TagViewModel> Get(int id)
+        [HttpGet("{tagId}")]
+        public ActionResult<TagViewModel> Get(int tagId)
         {
-            var tag = _applicationDb.Tags.FirstOrDefault(x => x.Id == id);
+            var tag = _applicationDb.Tags.FirstOrDefault(x => x.Id == tagId);
 
             if (tag == null)
                 return NotFound();
@@ -49,7 +49,6 @@ namespace WebStoreAPI.Controllers
             var tagViewModel = mapper.Map<Tag, TagViewModel>(tag);
 
             return tagViewModel;
-
         }
 
         [HttpPost]
@@ -95,10 +94,10 @@ namespace WebStoreAPI.Controllers
             return Ok(tag);
         }
 
-        [HttpDelete("{id}")]
-        public ActionResult<TagViewModel> Delete(int id)
+        [HttpDelete("{tagId}")]
+        public ActionResult<TagViewModel> Delete(int tagId)
         {
-            var tag = _applicationDb.Tags.FirstOrDefault(x => x.Id == id);
+            var tag = _applicationDb.Tags.FirstOrDefault(x => x.Id == tagId);
 
             if (tag == null)
                 return NotFound();

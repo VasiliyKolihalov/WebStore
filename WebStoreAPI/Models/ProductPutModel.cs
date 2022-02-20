@@ -9,15 +9,10 @@ namespace WebStoreAPI.Models
 {
     public class ProductPutModel
     {
-        [Required]
-        public long Id { get; set; }
-        [Required]
-        public string Name { get; set; }
-        [Min(0.0)]
-        public decimal Cost { get; set; }
-        [Required]
-        public string Description { get; set; }
-        [Min(0)]
-        public int QuantityInStock { get; set; }
+        [Required] public long Id { get; set; }
+        [Required] public string Name { get; set; }
+        [Min(0.0)] public decimal Cost { get; set; }
+        [Required] public string Description { get; set; }
+        [Min(0)] public int QuantityInStock { get; set; }
     }
 }

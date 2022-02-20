@@ -10,12 +10,11 @@ using Microsoft.AspNetCore.Authorization;
 
 namespace WebStoreAPI.Controllers
 {
-    [Authorize(Roles = RolesConstants.AdminRoleName)]
+    [Authorize(Roles = ApplicationConstants.AdminRoleName)]
     [Route("api/[controller]")]
     [ApiController]
     public class RolesController : ControllerBase
     {
-
         private readonly RoleManager<IdentityRole> _roleManager;
 
         public RolesController(RoleManager<IdentityRole> roleManager)
@@ -29,13 +28,13 @@ namespace WebStoreAPI.Controllers
             return _roleManager.Roles.ToList();
         }
 
-        [HttpPost("{name}")]
-        public ActionResult<IdentityRole> Create(string name)
+        [HttpPost("{roleName}")]
+        public ActionResult<IdentityRole> Create(string roleName)
         {
-            if (string.IsNullOrEmpty(name))
+            if (string.IsNullOrEmpty(roleName))
                 return BadRequest();
 
-            var role = new IdentityRole(name);
+            var role = new IdentityRole(roleName);
             IdentityResult result = _roleManager.CreateAsync(role).Result;
 
             if (result.Succeeded)
@@ -48,14 +47,15 @@ namespace WebStoreAPI.Controllers
                 {
                     ModelState.AddModelError(string.Empty, error.Description);
                 }
+
                 return BadRequest(ModelState);
             }
         }
 
-        [HttpDelete("{id}")]
-        public ActionResult<IdentityRole> Delete(string id)
+        [HttpDelete("{roleId}")]
+        public ActionResult<IdentityRole> Delete(string roleId)
         {
-            var role = _roleManager.FindByIdAsync(id).Result;
+            var role = _roleManager.FindByIdAsync(roleId).Result;
 
             if (role == null)
                 return NotFound();
@@ -68,10 +68,11 @@ namespace WebStoreAPI.Controllers
             }
             else
             {
-                foreach(var error in result.Errors)
+                foreach (var error in result.Errors)
                 {
                     ModelState.AddModelError(string.Empty, error.Description);
                 }
+
                 return BadRequest(ModelState);
             }
         }

@@ -11,17 +11,13 @@ namespace WebStoreAPI.Models
     {
         public int Id { get; set; }
         public Product Product { get; set; }
-        public List<ProductsCart> ProductsCarts { get; set; }
-        public int Count { get; set; } 
+        public ProductsCart ProductsCart { get; set; }
+        public int Count { get; set; }
         public decimal Cost { get; set; }
         public bool Selected { get; set; }
-
-        [NotMapped]
-        public bool CanBuy { get => Product.QuantityInStock >= Count; }
-
+        
         public ProductInCart()
         {
-            ProductsCarts = new List<ProductsCart>();
             Count = 1;
         }
     }

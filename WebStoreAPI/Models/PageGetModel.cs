@@ -18,6 +18,7 @@ namespace WebStoreAPI.Models
 
     public enum PageOrder
     {
-        Cost
+        Cost,
+        Rating
     }
 }

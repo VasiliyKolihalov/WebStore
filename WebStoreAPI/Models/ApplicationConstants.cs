@@ -5,10 +5,13 @@ using System.Threading.Tasks;
 
 namespace WebStoreAPI.Models
 {
-    public class RolesConstants
+    public static class ApplicationConstants
     {
         public const string AdminRoleName = "admin";
         public const string SellerRoleName = "seller";
         public const string UserRoleName = "user";
+
+        public const int MinRating = 0;
+        public const int MaxRating = 5;
     }
 }

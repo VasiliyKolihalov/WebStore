@@ -8,18 +8,13 @@ namespace WebStoreAPI.Models
 {
     public class RegisterUserModel
     {
-        [Required]
-        public string Name { get; set; }
+        [Required] public string Name { get; set; }
 
-        [Required]
-        public string Email { get; set; }
+        [EmailAddress]
+        [Required] public string Email { get; set; }
 
-        [Required]
-        public string Password { get; set; }
+        [Required] public string Password { get; set; }
 
-        [Compare("Password")]
-        [Required]
-        public string PasswordConfirm { get; set; }
-
+        [Compare(nameof(Password))] [Required] public string PasswordConfirm { get; set; }
     }
 }

@@ -9,9 +9,13 @@ using AutoMapper;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Identity;
+using Microsoft.Extensions.Configuration;
+using Scriban;
+using WebStoreAPI.Services;
 
 namespace WebStoreAPI.Controllers
 {
+    [Authorize]
     [Route("api/[controller]")]
     [ApiController]
     public class OpenStoreRequestsController : ControllerBase
@@ -19,13 +23,16 @@ namespace WebStoreAPI.Controllers
         private readonly IApplicationContext _applicationDb;
         private readonly UserManager<User> _userManager;
         private readonly RoleManager<IdentityRole> _roleManager;
+        private readonly IConfiguration _configuration;
         private User _user;
 
-        public OpenStoreRequestsController(IApplicationContext applicationContext, UserManager<User> userManager, RoleManager<IdentityRole> roleManager)
+        public OpenStoreRequestsController(IApplicationContext applicationContext, UserManager<User> userManager,
+            RoleManager<IdentityRole> roleManager, IConfiguration configuration)
         {
             _applicationDb = applicationContext;
             _userManager = userManager;
             _roleManager = roleManager;
+            _configuration = configuration;
         }
 
         private void SetUser()
@@ -33,7 +40,7 @@ namespace WebStoreAPI.Controllers
             _user = _userManager.GetUserAsync(HttpContext.User).Result;
         }
 
-        [Authorize(Roles = RolesConstants.AdminRoleName)]
+        [Authorize(Roles = ApplicationConstants.AdminRoleName)]
         [HttpGet]
         public ActionResult<IEnumerable<OpenStoreRequestViewModel>> GetAll()
         {
@@ -42,17 +49,19 @@ namespace WebStoreAPI.Controllers
             var mapperConfig = new MapperConfiguration(cfg =>
             {
                 cfg.CreateMap<OpenStoreRequest, OpenStoreRequestViewModel>();
-                cfg.CreateMap<User, UserViewModel>().ForMember(nameof(UserViewModel.Name), opt => opt.MapFrom(x => x.UserName));
+                cfg.CreateMap<User, UserViewModel>()
+                    .ForMember(nameof(UserViewModel.Name), opt => opt.MapFrom(x => x.UserName));
             });
 
             var mapper = new Mapper(mapperConfig);
 
-            var requestViewModels = mapper.Map<IEnumerable<OpenStoreRequest>, List<OpenStoreRequestViewModel>>(requests);
+            var requestViewModels =
+                mapper.Map<IEnumerable<OpenStoreRequest>, List<OpenStoreRequestViewModel>>(requests);
 
             return requestViewModels;
         }
 
-        [Authorize(Roles = RolesConstants.AdminRoleName)]
+        [Authorize(Roles = ApplicationConstants.AdminRoleName)]
         [HttpGet("{requestId}")]
         public ActionResult<OpenStoreRequestViewModel> Get(int requestId)
         {
@@ -64,7 +73,8 @@ namespace WebStoreAPI.Controllers
             var mapperConfig = new MapperConfiguration(cfg =>
             {
                 cfg.CreateMap<OpenStoreRequest, OpenStoreRequestViewModel>();
-                cfg.CreateMap<User, UserViewModel>().ForMember(nameof(UserViewModel.Name), opt => opt.MapFrom(x => x.UserName));
+                cfg.CreateMap<User, UserViewModel>()
+                    .ForMember(nameof(UserViewModel.Name), opt => opt.MapFrom(x => x.UserName));
             });
 
             var mapper = new Mapper(mapperConfig);
@@ -74,7 +84,6 @@ namespace WebStoreAPI.Controllers
             return requestViewModel;
         }
 
-        [Authorize()]
         [HttpPost]
         public ActionResult<OpenStoreRequestViewModel> Post(OpenStoreRequestAddModel requestAddModel)
         {
@@ -91,8 +100,10 @@ namespace WebStoreAPI.Controllers
             var mapperConfig = new MapperConfiguration(cfg =>
             {
                 cfg.CreateMap<OpenStoreRequestAddModel, OpenStoreRequest>();
+
                 cfg.CreateMap<OpenStoreRequest, OpenStoreRequestViewModel>();
-                cfg.CreateMap<User, UserViewModel>().ForMember(nameof(UserViewModel.Name), opt => opt.MapFrom(x => x.UserName));
+                cfg.CreateMap<User, UserViewModel>()
+                    .ForMember(nameof(UserViewModel.Name), opt => opt.MapFrom(x => x.UserName));
             });
             var mapper = new Mapper(mapperConfig);
 
@@ -107,7 +118,7 @@ namespace WebStoreAPI.Controllers
             return Ok(requestViewModel);
         }
 
-        [Authorize(Roles = RolesConstants.AdminRoleName)]
+        [Authorize(Roles = ApplicationConstants.AdminRoleName)]
         [Route("{requestId}/accept")]
         [HttpPost]
         public ActionResult<OpenStoreRequestViewModel> Accept(int requestId)
@@ -130,10 +141,18 @@ namespace WebStoreAPI.Controllers
             _applicationDb.OpenStoreRequests.Remove(request);
             _applicationDb.SaveChanges();
 
+            var htmlString = System.IO.File.ReadAllText("Views/OpenStoreEmail.html");
+            Template template = Template.Parse(htmlString);
+            string message = template.Render(new {user_name = request.User.UserName, store_name = store.Name});
+            
+            var emailService = new EmailService(_configuration);
+            emailService.SendEmail(request.User.Email, "Заявка принята", message);
+
             var mapperConfig = new MapperConfiguration(cfg =>
             {
                 cfg.CreateMap<OpenStoreRequest, OpenStoreRequestViewModel>();
-                cfg.CreateMap<User, UserViewModel>().ForMember(nameof(UserViewModel.Name), opt => opt.MapFrom(x => x.UserName));
+                cfg.CreateMap<User, UserViewModel>()
+                    .ForMember(nameof(UserViewModel.Name), opt => opt.MapFrom(x => x.UserName));
             });
 
             var mapper = new Mapper(mapperConfig);

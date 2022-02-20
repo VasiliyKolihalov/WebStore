@@ -11,6 +11,7 @@ namespace WebStoreAPI.Models
     public class ApplicationContext : IdentityDbContext<User>, IApplicationContext
     {
         public DbSet<Product> Products { get; set; }
+        public DbSet<Review> Reviews { get; set; }
         public DbSet<ProductsCart> ProductsCarts { get; set; }
         public DbSet<ProductInCart> ProductsInCarts { get; set; }
         public DbSet<Image> Images { get; set; }

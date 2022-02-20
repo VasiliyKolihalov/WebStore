@@ -8,7 +8,7 @@ namespace WebStoreAPI.Models
 {
     public class OpenStoreRequest
     {
-        public int Id { get; set; }  
+        public int Id { get; set; }
         public User User { get; set; }
         public string Message { get; set; }
         public string StoreName { get; set; }

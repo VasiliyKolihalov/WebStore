@@ -11,7 +11,6 @@ using Microsoft.AspNetCore.Authorization;
 
 namespace WebStoreAPI.Controllers
 {
-    
     [Route("api/[controller]")]
     [ApiController]
     public class CategoriesController : ControllerBase
@@ -27,12 +26,14 @@ namespace WebStoreAPI.Controllers
         public ActionResult<IEnumerable<CategoryViewModel>> GetAll()
         {
             var mapperConfig = new MapperConfiguration(cfg => cfg.CreateMap<Category, CategoryViewModel>()
-                                                            .ForMember(nameof(CategoryViewModel.ParentId), opt => opt.MapFrom(x => x.Parent.Id)));
+                .ForMember(nameof(CategoryViewModel.ParentId), opt => opt.MapFrom(x => x.Parent.Id)));
             var mapper = new Mapper(mapperConfig);
 
-            var categoryViewModels = mapper.Map<IEnumerable<Category>, List<CategoryViewModel>>(_applicationDb.Categories.Include(x => x.Parent));
+            var categoryViewModels =
+                mapper.Map<IEnumerable<Category>, List<CategoryViewModel>>(
+                    _applicationDb.Categories.Include(x => x.Parent));
             return categoryViewModels;
-        } 
+        }
 
         [HttpGet("{id}")]
         public ActionResult<CategoryViewModel> Get(int id)
@@ -43,7 +44,7 @@ namespace WebStoreAPI.Controllers
                 return NotFound();
 
             var mapperConfig = new MapperConfiguration(cfg => cfg.CreateMap<Category, CategoryViewModel>()
-                                                            .ForMember(nameof(CategoryViewModel.ParentId), opt => opt.MapFrom(x => x.Parent.Id)));
+                .ForMember(nameof(CategoryViewModel.ParentId), opt => opt.MapFrom(x => x.Parent.Id)));
             var mapper = new Mapper(mapperConfig);
 
             var categoryViewModel = mapper.Map<Category, CategoryViewModel>(category);
@@ -59,7 +60,7 @@ namespace WebStoreAPI.Controllers
                 return NotFound();
 
             var mapperConfig = new MapperConfiguration(cfg => cfg.CreateMap<Category, CategoryViewModel>()
-                                                           .ForMember(nameof(CategoryViewModel.ParentId), opt => opt.MapFrom(x => x.Parent.Id)));
+                .ForMember(nameof(CategoryViewModel.ParentId), opt => opt.MapFrom(x => x.Parent.Id)));
             var mapper = new Mapper(mapperConfig);
 
             var categories = _applicationDb.Categories.Include(x => x.Parent).Where(x => x.Parent.Id == id);
@@ -69,7 +70,7 @@ namespace WebStoreAPI.Controllers
             return categoryViewModels;
         }
 
-        [Authorize(Roles = RolesConstants.AdminRoleName)]
+        [Authorize(Roles = ApplicationConstants.AdminRoleName)]
         [HttpPost]
         public ActionResult<CategoryViewModel> Post(CatergoryAddModel categoryAddModel)
         {
@@ -79,16 +80,18 @@ namespace WebStoreAPI.Controllers
             var mapperConfig = new MapperConfiguration(cfg =>
             {
                 cfg.CreateMap<CatergoryAddModel, Category>();
-                cfg.CreateMap<Category, CategoryViewModel>().ForMember(nameof(CategoryViewModel.ParentId), opt => opt.MapFrom(x => x.Parent.Id));
+                cfg.CreateMap<Category, CategoryViewModel>().ForMember(nameof(CategoryViewModel.ParentId),
+                    opt => opt.MapFrom(x => x.Parent.Id));
             });
 
             var mapper = new Mapper(mapperConfig);
 
             var category = mapper.Map<CatergoryAddModel, Category>(categoryAddModel);
 
-            if(categoryAddModel.ParentId != 0)
+            if (categoryAddModel.ParentId != 0)
             {
-                Category categoryParent = _applicationDb.Categories.FirstOrDefault(x => x.Id == categoryAddModel.ParentId);
+                Category categoryParent =
+                    _applicationDb.Categories.FirstOrDefault(x => x.Id == categoryAddModel.ParentId);
 
                 if (categoryParent == null)
                     return NotFound();
@@ -102,23 +105,29 @@ namespace WebStoreAPI.Controllers
             var categoryViewModel = mapper.Map<Category, CategoryViewModel>(category);
 
             return Ok(categoryViewModel);
-
         }
 
-        [Authorize(Roles = RolesConstants.AdminRoleName)]
+        [Authorize(Roles = ApplicationConstants.AdminRoleName)]
         [HttpPut]
         public ActionResult<CategoryViewModel> Put(CategoryViewModel categoryViewModel)
         {
             if (!ModelState.IsValid)
                 return BadRequest(ModelState);
 
-            var category = _applicationDb.Categories.Include(x => x.Parent).FirstOrDefault(x => x.Id == categoryViewModel.Id);
+            var category = _applicationDb.Categories.Include(x => x.Parent)
+                .FirstOrDefault(x => x.Id == categoryViewModel.Id);
+
+            if (category == null)
+            {
+                return BadRequest(ModelState);
+            }
 
             category.Name = categoryViewModel.Name;
 
             if (categoryViewModel.ParentId != 0)
             {
-                Category newParentCategory = _applicationDb.Categories.FirstOrDefault(x => x.Id == categoryViewModel.ParentId);
+                Category newParentCategory =
+                    _applicationDb.Categories.FirstOrDefault(x => x.Id == categoryViewModel.ParentId);
 
                 if (newParentCategory == null)
                     return NotFound();
@@ -136,7 +145,7 @@ namespace WebStoreAPI.Controllers
             return Ok(categoryViewModel);
         }
 
-        [Authorize(Roles = RolesConstants.AdminRoleName)]
+        [Authorize(Roles = ApplicationConstants.AdminRoleName)]
         [HttpDelete("{id}")]
         public ActionResult<CategoryViewModel> Delete(int id)
         {
@@ -147,7 +156,7 @@ namespace WebStoreAPI.Controllers
 
             var childCategories = _applicationDb.Categories.Where(x => x.Parent.Id == id);
 
-            foreach(Category child in childCategories)
+            foreach (Category child in childCategories)
             {
                 child.Parent = null;
             }
@@ -157,13 +166,12 @@ namespace WebStoreAPI.Controllers
             _applicationDb.SaveChanges();
 
             var mapperConfig = new MapperConfiguration(cfg => cfg.CreateMap<Category, CategoryViewModel>()
-                                                          .ForMember(nameof(CategoryViewModel.ParentId), opt => opt.MapFrom(x => x.Parent.Id)));
+                .ForMember(nameof(CategoryViewModel.ParentId), opt => opt.MapFrom(x => x.Parent.Id)));
             var mapper = new Mapper(mapperConfig);
 
             var categoryViewModel = mapper.Map<Category, CategoryViewModel>(category);
 
             return Ok(categoryViewModel);
         }
-
     }
 }
