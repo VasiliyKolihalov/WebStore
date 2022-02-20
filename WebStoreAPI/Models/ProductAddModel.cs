@@ -9,13 +9,9 @@ namespace WebStoreAPI.Models
 {
     public class ProductAddModel
     {
-        [Required]
-        public string Name { get; set; }
-        [Min(0.0)]
-        public decimal Cost { get; set; }
-        [Required]
-        public string Description { get; set; }
-        [Min(0)]
-        public int QuantityInStock { get; set; }
+        [Required] public string Name { get; set; }
+        [Min(0.0)] public decimal Cost { get; set; }
+        [Required] public string Description { get; set; }
+        [Min(0)] public int QuantityInStock { get; set; }
     }
 }

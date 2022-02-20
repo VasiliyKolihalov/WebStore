@@ -12,7 +12,7 @@ using Microsoft.EntityFrameworkCore;
 
 namespace WebStoreAPI.Controllers
 {
-    [Authorize(Roles = RolesConstants.AdminRoleName + ", " + RolesConstants.SellerRoleName)]
+    [Authorize]
     [Route("api/[controller]")]
     [ApiController]
     public class ImagesController : ControllerBase
@@ -39,45 +39,36 @@ namespace WebStoreAPI.Controllers
             var images = _applicationDb.Images.Include(x => x.User).Where(x => x.User.Id == _user.Id);
 
             var mapperConfig = new MapperConfiguration(cfg =>
-            {
-                cfg.CreateMap<Image, Base64ImageViewModel>().ForMember(nameof(Base64ImageViewModel.ImageData), opt => 
-                                                            opt.MapFrom(x => Convert.ToBase64String(x.ImageData)));
-
-                cfg.CreateMap<User, UserViewModel>().ForMember(nameof(UserViewModel.Name), opt =>opt.MapFrom(x => x.UserName));
-
-            });
+                cfg.CreateMap<Image, Base64ImageViewModel>().ForMember(nameof(Base64ImageViewModel.ImageData), opt =>
+                    opt.MapFrom(x => Convert.ToBase64String(x.ImageData))));
 
             var mapper = new Mapper(mapperConfig);
 
             var base64ImageViewModels = mapper.Map<IEnumerable<Image>, List<Base64ImageViewModel>>(images);
 
             return base64ImageViewModels;
-
         }
 
-       
         [HttpPost]
         public ActionResult<Image> Post(Base64ImageAddModel imageAddModel)
         {
             if (!ModelState.IsValid)
                 return BadRequest(ModelState);
-            
+
             SetUser();
             if (!_user.EmailConfirmed)
             {
                 ModelState.AddModelError(string.Empty, "email not confirmed");
                 return BadRequest(ModelState);
             }
-            
+
             var mapperConfig = new MapperConfiguration(cfg =>
             {
                 cfg.CreateMap<Base64ImageAddModel, Image>()
-                                .ForMember(nameof(Image.ImageData), opt => opt.MapFrom(x => Convert.FromBase64String(x.ImageData)));
+                    .ForMember(nameof(Image.ImageData), opt => opt.MapFrom(x => Convert.FromBase64String(x.ImageData)));
 
                 cfg.CreateMap<Image, Base64ImageViewModel>().ForMember(nameof(Base64ImageViewModel.ImageData), opt =>
-                                                            opt.MapFrom(x => Convert.ToBase64String(x.ImageData)));
-
-                cfg.CreateMap<User, UserViewModel>().ForMember(nameof(UserViewModel.Name), opt => opt.MapFrom(x => x.UserName));
+                    opt.MapFrom(x => Convert.ToBase64String(x.ImageData)));
             });
 
             var mapper = new Mapper(mapperConfig);
@@ -108,7 +99,8 @@ namespace WebStoreAPI.Controllers
             if (!ModelState.IsValid)
                 return BadRequest(ModelState);
 
-            var image = _applicationDb.Images.Include(x => x.User).AsNoTracking().FirstOrDefault(x => x.Id == imagePutModel.Id);
+            var image = _applicationDb.Images.Include(x => x.User).AsNoTracking()
+                .FirstOrDefault(x => x.Id == imagePutModel.Id);
 
             if (image == null)
                 return NotFound();
@@ -120,12 +112,10 @@ namespace WebStoreAPI.Controllers
             var mapperConfig = new MapperConfiguration(cfg =>
             {
                 cfg.CreateMap<Base64ImagePutModel, Image>().ForMember(nameof(Image.ImageData), opt => opt
-                                                           .MapFrom(x => Convert.FromBase64String(x.ImageData)));
+                    .MapFrom(x => Convert.FromBase64String(x.ImageData)));
 
                 cfg.CreateMap<Image, Base64ImageViewModel>().ForMember(nameof(Base64ImageViewModel.ImageData), opt =>
-                                                            opt.MapFrom(x => Convert.ToBase64String(x.ImageData)));
-
-                cfg.CreateMap<User, UserViewModel>().ForMember(nameof(UserViewModel.Name), opt => opt.MapFrom(x => x.UserName));
+                    opt.MapFrom(x => Convert.ToBase64String(x.ImageData)));
             });
             var mapper = new Mapper(mapperConfig);
 
@@ -162,21 +152,14 @@ namespace WebStoreAPI.Controllers
             _applicationDb.SaveChanges();
 
             var mapperConfig = new MapperConfiguration(cfg =>
-            {
-                cfg.CreateMap<Image, Base64ImageViewModel>().ForMember(nameof(Base64ImageViewModel.ImageData), opt => opt
-                                                            .MapFrom(x => Convert.ToBase64String(x.ImageData)));
-
                 cfg.CreateMap<Image, Base64ImageViewModel>().ForMember(nameof(Base64ImageViewModel.ImageData), opt =>
-                                                            opt.MapFrom(x => Convert.ToBase64String(x.ImageData)));
+                    opt.MapFrom(x => Convert.ToBase64String(x.ImageData))));
 
-                cfg.CreateMap<User, UserViewModel>().ForMember(nameof(UserViewModel.Name), opt => opt.MapFrom(x => x.UserName));
-            });
             var mapper = new Mapper(mapperConfig);
 
             var base64ImageViewModel = mapper.Map<Image, Base64ImageViewModel>(image);
 
             return Ok(base64ImageViewModel);
         }
-
     }
 }

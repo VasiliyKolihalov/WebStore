@@ -13,9 +13,6 @@ namespace WebStoreAPI.Models
         public List<ProductInCart> ProductsInCart { get; set; }
         public User User { get; set; }
         public string UserId { get; set; }
-     
-        [NotMapped]
-        public decimal ProductsCartCost { get => ProductsInCart.Sum(x => x.Cost); }
 
         public ProductsCart()
         {

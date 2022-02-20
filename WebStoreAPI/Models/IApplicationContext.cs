@@ -9,7 +9,8 @@ namespace WebStoreAPI.Models
     public interface IApplicationContext
     {
         public DbSet<Product> Products { get; }
-        public DbSet<ProductsCart> ProductsCarts { get;}
+        public DbSet<Review> Reviews { get; }
+        public DbSet<ProductsCart> ProductsCarts { get; }
         public DbSet<ProductInCart> ProductsInCarts { get; }
         public DbSet<Image> Images { get; }
         public DbSet<Category> Categories { get; }

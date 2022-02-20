@@ -8,9 +8,7 @@ namespace WebStoreAPI.Models
 {
     public class Base64ImageAddModel
     {
-        [Required]
-        public string Name { get; set; }
-        [Required]
-        public string ImageData { get; set; }
+        [Required] public string Name { get; set; }
+        [Required] public string ImageData { get; set; }
     }
 }

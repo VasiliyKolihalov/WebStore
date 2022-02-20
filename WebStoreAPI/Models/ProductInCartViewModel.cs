@@ -13,7 +13,6 @@ namespace WebStoreAPI.Models
         public decimal Cost { get; set; }
         public bool Selected { get; set; }
 
-        public bool CanBuy { get => Product.QuantityInStock >= Count; }
-
+        public bool CanBuy => Product.QuantityInStock >= Count;
     }
 }

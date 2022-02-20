@@ -10,7 +10,6 @@ namespace WebStoreAPI.Models
     public class User : IdentityUser
     {
         public ProductsCart ProductsCart { get; set; }
-
         public User()
         {
             ProductsCart = new ProductsCart();

@@ -255,7 +255,7 @@ namespace WebStoreTests
             var userManagerMock = GetMockUserManager();
             var testProduct = GetTestProduct();
             userManagerMock.Setup(x => x.GetUserAsync(It.IsAny<ClaimsPrincipal>()).Result).Returns(testUser);
-            userManagerMock.Setup(x => x.GetRolesAsync(It.IsAny<User>()).Result).Returns(new List<string>() { RolesConstants.AdminRoleName });
+            userManagerMock.Setup(x => x.GetRolesAsync(It.IsAny<User>()).Result).Returns(new List<string>() { ApplicationConstants.AdminRoleName });
 
             Mock<IApplicationContext> mockContext = new Mock<IApplicationContext>();
             Mock<DbSet<Product>> mockDbSetProducts = GetQueryableMockDbSet(new List<Product>() { testProduct });
@@ -279,7 +279,7 @@ namespace WebStoreTests
             var testProduct = GetTestProduct(testStore);
             var userManagerMock = GetMockUserManager();
             userManagerMock.Setup(x => x.GetUserAsync(It.IsAny<ClaimsPrincipal>()).Result).Returns(testUser);
-            userManagerMock.Setup(x => x.GetRolesAsync(It.IsAny<User>()).Result).Returns(new List<string>() { RolesConstants.SellerRoleName });
+            userManagerMock.Setup(x => x.GetRolesAsync(It.IsAny<User>()).Result).Returns(new List<string>() { ApplicationConstants.SellerRoleName });
 
             Mock<IApplicationContext> mockContext = new Mock<IApplicationContext>();
             Mock<DbSet<Product>> mockDbSetProducts = GetQueryableMockDbSet(new List<Product>() { testProduct });
@@ -304,7 +304,7 @@ namespace WebStoreTests
             var testStore = GetTestStore(testUser);
             var userManagerMock = GetMockUserManager();
             userManagerMock.Setup(x => x.GetUserAsync(It.IsAny<ClaimsPrincipal>()).Result).Returns(new User());
-            userManagerMock.Setup(x => x.GetRolesAsync(It.IsAny<User>()).Result).Returns(new List<string>() { RolesConstants.SellerRoleName });
+            userManagerMock.Setup(x => x.GetRolesAsync(It.IsAny<User>()).Result).Returns(new List<string>() { ApplicationConstants.SellerRoleName });
 
             Mock<IApplicationContext> mockContext = new Mock<IApplicationContext>();
             Mock<DbSet<Product>> mockDbSetProducts = GetQueryableMockDbSet(new List<Product>() { GetTestProduct(testStore) });
@@ -341,7 +341,7 @@ namespace WebStoreTests
             var userManagerMock = GetMockUserManager();
             var testUser = GetTestUser();
             userManagerMock.Setup(x => x.GetUserAsync(It.IsAny<ClaimsPrincipal>()).Result).Returns(testUser);
-            userManagerMock.Setup(x => x.GetRolesAsync(It.IsAny<User>()).Result).Returns(new List<string>() { RolesConstants.AdminRoleName });
+            userManagerMock.Setup(x => x.GetRolesAsync(It.IsAny<User>()).Result).Returns(new List<string>() { ApplicationConstants.AdminRoleName });
 
             Mock<IApplicationContext> mockContext = new Mock<IApplicationContext>();
             Mock<DbSet<Product>> mockDbSetProducts = GetQueryableMockDbSet(new List<Product>() { testProduct });
@@ -366,7 +366,7 @@ namespace WebStoreTests
             var testStore = GetTestStore(testUser);
             var testProduct = GetTestProduct(testStore);
             userManagerMock.Setup(x => x.GetUserAsync(It.IsAny<ClaimsPrincipal>()).Result).Returns(testUser);
-            userManagerMock.Setup(x => x.GetRolesAsync(It.IsAny<User>()).Result).Returns(new List<string>() { RolesConstants.SellerRoleName });
+            userManagerMock.Setup(x => x.GetRolesAsync(It.IsAny<User>()).Result).Returns(new List<string>() { ApplicationConstants.SellerRoleName });
 
             Mock<IApplicationContext> mockContext = new Mock<IApplicationContext>();
             Mock<DbSet<Product>> mockDbSetProducts = GetQueryableMockDbSet(new List<Product>() { testProduct });
@@ -391,7 +391,7 @@ namespace WebStoreTests
             var testStore = GetTestStore(testUser);
             var testProduct = GetTestProduct(testStore);
             userManagerMock.Setup(x => x.GetUserAsync(It.IsAny<ClaimsPrincipal>()).Result).Returns(new User());
-            userManagerMock.Setup(x => x.GetRolesAsync(It.IsAny<User>()).Result).Returns(new List<string>() { RolesConstants.SellerRoleName });
+            userManagerMock.Setup(x => x.GetRolesAsync(It.IsAny<User>()).Result).Returns(new List<string>() { ApplicationConstants.SellerRoleName });
 
             Mock<IApplicationContext> mockContext = new Mock<IApplicationContext>();
             Mock<DbSet<Product>> mockDbSetProducts = GetQueryableMockDbSet(new List<Product>() { testProduct });

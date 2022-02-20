@@ -1,10 +1,13 @@
-﻿using System.Net.Http;
+﻿using System;
+using System.Linq;
+using System.Net.Http;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Identity;
 using WebStoreAPI.Models;
 using SignInResult = Microsoft.AspNetCore.Identity.SignInResult;
 using Microsoft.AspNetCore.Authorization;
 using AutoMapper;
+using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Configuration;
 using WebStoreAPI.Services;
 using Scriban;
@@ -38,15 +41,19 @@ namespace WebStoreAPI.Controllers
         public ActionResult<UserViewModel> Get()
         {
             SetUser();
-            var mapperConfig = new MapperConfiguration(cfg => cfg.CreateMap<User, UserViewModel>().ForMember(
-                nameof(UserViewModel.Name), opt =>
-                    opt.MapFrom(x => x.UserName)));
+
+            var mapperConfig = new MapperConfiguration(cfg =>
+            {
+                cfg.CreateMap<User, UserViewModel>()
+                    .ForMember(nameof(UserViewModel.Name), opt => opt.MapFrom(x => x.UserName));
+            });
             var mapper = new Mapper(mapperConfig);
 
             var userViewModel = mapper.Map<User, UserViewModel>(_user);
-            return userViewModel;
+
+            return Ok(userViewModel);
         }
-        
+
         [Route("register")]
         [HttpPost]
         public ActionResult<UserViewModel> Register(RegisterUserModel registerModel)
@@ -60,6 +67,7 @@ namespace WebStoreAPI.Controllers
             var mapperConfig = new MapperConfiguration(cfg => cfg.CreateMap<User, UserViewModel>().ForMember(
                 nameof(UserViewModel.Name), opt =>
                     opt.MapFrom(x => x.UserName)));
+
             var mapper = new Mapper(mapperConfig);
 
             if (result.Succeeded)
@@ -79,7 +87,7 @@ namespace WebStoreAPI.Controllers
                 return BadRequest(ModelState);
             }
         }
-        
+
         [Route("login")]
         [HttpPost]
         public ActionResult<SignInResult> Login(LoginUserModel loginModel)
@@ -117,7 +125,7 @@ namespace WebStoreAPI.Controllers
         {
             SetUser();
             string confirmCode = _userManager.GenerateEmailConfirmationTokenAsync(_user).Result;
-            
+
             string callbackUrl = Url.Action(
                 action: nameof(ConfirmEmail),
                 controller: "Account",
@@ -142,7 +150,7 @@ namespace WebStoreAPI.Controllers
             {
                 return BadRequest();
             }
-            
+
             var user = _userManager.FindByIdAsync(userId).Result;
             if (user == null)
             {

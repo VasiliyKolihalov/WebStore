@@ -33,7 +33,7 @@ namespace WebStoreAPI.Controllers
         [HttpGet]
         public ActionResult<IEnumerable<ProductViewModel>> GetAll()
         {
-            var products = _applicationDb.Products.Include(x => x.Store);
+            var products = _applicationDb.Products.Include(x => x.Store).Include(x => x.Reviews);
 
             var mapperConfig = new MapperConfiguration(cfg =>
             {
@@ -50,7 +50,8 @@ namespace WebStoreAPI.Controllers
         [HttpGet("{id}")]
         public ActionResult<ProductViewModel> Get(long id)
         {
-            var product = _applicationDb.Products.Include(x => x.Store).FirstOrDefault(x => x.Id == id);
+            var product = _applicationDb.Products.Include(x => x.Store).Include(x => x.Reviews)
+                .FirstOrDefault(x => x.Id == id);
 
             if (product == null)
                 return NotFound();
@@ -83,8 +84,15 @@ namespace WebStoreAPI.Controllers
                 .Where(x => pageGetModel.StoresId.Contains(x.Id)).ToList();
 
             Func<Product, double> ordenBy = null;
-            if (pageGetModel.OrderBy == PageOrder.Cost)
-                ordenBy = x => (double) x.Cost;
+            switch (pageGetModel.OrderBy)
+            {
+                case PageOrder.Cost:
+                    ordenBy = x => (double) x.Cost;
+                    break;
+                case PageOrder.Rating:
+                    ordenBy = x => x.Reviews.Sum(x => x.Rating) / (x.Reviews.Count + 1);
+                    break;
+            }
 
             Func<Product, bool> selectBy = null;
             if (pageGetModel.CategoriesId.Any())
@@ -101,7 +109,7 @@ namespace WebStoreAPI.Controllers
                 selectBy += product => stores.Contains(product.Store);
             }
 
-            IEnumerable<Product> products = _applicationDb.Products.Include(x => x.Store);
+            IEnumerable<Product> products = _applicationDb.Products.Include(x => x.Store).Include(x => x.Reviews);
             if (selectBy != null)
                 products = products.Where(selectBy);
             if (ordenBy != null)
@@ -115,6 +123,7 @@ namespace WebStoreAPI.Controllers
             {
                 cfg.CreateMap<Product, ProductViewModel>();
                 cfg.CreateMap<Store, StorePutModel>();
+
                 cfg.CreateMap<Category, CategoryViewModel>()
                     .ForMember(nameof(CategoryViewModel.ParentId), opt => opt.MapFrom(x => x.Parent.Id));
             });
@@ -142,7 +151,7 @@ namespace WebStoreAPI.Controllers
         public ActionResult<IEnumerable<ProductViewModel>> GetBasedKeyword(string keyWord)
         {
             var loverKeyWord = keyWord.ToLower();
-            var products = _applicationDb.Products.Include(x => x.Store)
+            var products = _applicationDb.Products.Include(x => x.Store).Include(x => x.Reviews)
                 .Where(x => x.Name.ToLower().Contains(loverKeyWord) ||
                             x.Description.ToLower().Contains(loverKeyWord));
             if (!products.Any())
@@ -168,7 +177,8 @@ namespace WebStoreAPI.Controllers
             if (store == null)
                 return NotFound();
 
-            var products = _applicationDb.Products.Include(x => x.Store).Where(x => x.Store.Id == store.Id);
+            var products = _applicationDb.Products.Include(x => x.Store).Include(x => x.Reviews)
+                .Where(x => x.Store.Id == store.Id);
 
             var mapperConfig = new MapperConfiguration(cfg =>
             {
@@ -190,7 +200,7 @@ namespace WebStoreAPI.Controllers
             if (category == null)
                 return NotFound();
 
-            var products = _applicationDb.Products.Include(x => x.Store)
+            var products = _applicationDb.Products.Include(x => x.Store).Include(x => x.Reviews)
                 .Where(x => x.Categories.FirstOrDefault(x => x.Id == categoryId) != null);
 
             var mapperConfig = new MapperConfiguration(cfg =>
@@ -214,7 +224,7 @@ namespace WebStoreAPI.Controllers
             if (tag == null)
                 return NotFound();
 
-            var products = _applicationDb.Products.Include(x => x.Store)
+            var products = _applicationDb.Products.Include(x => x.Store).Include(x => x.Reviews)
                 .Where(x => x.Tags.FirstOrDefault(x => x.Id == tagId) != null);
 
             var mapperConfig = new MapperConfiguration(cfg =>
@@ -229,7 +239,7 @@ namespace WebStoreAPI.Controllers
             return productsViewModels;
         }
 
-        [Authorize(Roles = RolesConstants.AdminRoleName + ", " + RolesConstants.SellerRoleName)]
+        [Authorize(Roles = ApplicationConstants.AdminRoleName + ", " + ApplicationConstants.SellerRoleName)]
         [HttpPost]
         public ActionResult<ProductViewModel> Post(ProductAddModel productAddModel)
         {
@@ -243,6 +253,7 @@ namespace WebStoreAPI.Controllers
             var mapperConfig = new MapperConfiguration(cfg =>
             {
                 cfg.CreateMap<ProductAddModel, Product>();
+
                 cfg.CreateMap<Product, ProductViewModel>();
                 cfg.CreateMap<Store, StorePutModel>();
             });
@@ -260,11 +271,12 @@ namespace WebStoreAPI.Controllers
             return Ok(productViewModel);
         }
 
-        [Authorize(Roles = RolesConstants.AdminRoleName + ", " + RolesConstants.SellerRoleName)]
+        [Authorize(Roles = ApplicationConstants.AdminRoleName + ", " + ApplicationConstants.SellerRoleName)]
         [HttpDelete("{id}")]
         public ActionResult<ProductViewModel> Delete(long id)
         {
-            var product = _applicationDb.Products.Include(x => x.Store).FirstOrDefault(x => x.Id == id);
+            var product = _applicationDb.Products.Include(x => x.Store).Include(x => x.Reviews)
+                .FirstOrDefault(x => x.Id == id);
 
             if (product == null)
                 return NotFound();
@@ -272,7 +284,7 @@ namespace WebStoreAPI.Controllers
             SetUser();
             IList<string> userRoles = _userManager.GetRolesAsync(_user).Result;
 
-            if (!userRoles.Contains(RolesConstants.AdminRoleName) && product.Store.Seller.Id != _user.Id)
+            if (!userRoles.Contains(ApplicationConstants.AdminRoleName) && product.Store.Seller.Id != _user.Id)
                 return BadRequest();
 
             _applicationDb.Products.Remove(product);
@@ -290,14 +302,14 @@ namespace WebStoreAPI.Controllers
             return Ok(productViewModel);
         }
 
-        [Authorize(Roles = RolesConstants.AdminRoleName + ", " + RolesConstants.SellerRoleName)]
+        [Authorize(Roles = ApplicationConstants.AdminRoleName + ", " + ApplicationConstants.SellerRoleName)]
         [HttpPut]
         public ActionResult<ProductViewModel> Put(ProductPutModel productPutModel)
         {
             if (!ModelState.IsValid)
                 return BadRequest(ModelState);
 
-            var product = _applicationDb.Products.Include(x => x.Store)
+            var product = _applicationDb.Products.Include(x => x.Store).Include(x => x.Reviews)
                 .AsNoTracking()
                 .FirstOrDefault(x => x.Id == productPutModel.Id);
 
@@ -307,12 +319,13 @@ namespace WebStoreAPI.Controllers
             SetUser();
             IList<string> userRoles = _userManager.GetRolesAsync(_user).Result;
 
-            if (!userRoles.Contains(RolesConstants.AdminRoleName) && product.Store.Seller.Id != _user.Id)
+            if (!userRoles.Contains(ApplicationConstants.AdminRoleName) && product.Store.Seller.Id != _user.Id)
                 return BadRequest();
 
             var mapperConfig = new MapperConfiguration(cfg =>
             {
                 cfg.CreateMap<ProductPutModel, Product>();
+
                 cfg.CreateMap<Product, ProductViewModel>();
                 cfg.CreateMap<Store, StorePutModel>();
             });
@@ -326,6 +339,86 @@ namespace WebStoreAPI.Controllers
             var productViewModel = mapper.Map<Product, ProductViewModel>(product);
             return Ok(productViewModel);
         }
+
+        #region product rating
+
+        [Route("{productId}/getReviews")]
+        [HttpGet]
+        public ActionResult<IEnumerable<ReviewViewModel>> GetReviews(long productId)
+        {
+            var reviews = _applicationDb.Reviews.Include(x => x.User).Where(x => x.Product.Id == productId);
+
+            if (!reviews.Any())
+            {
+                return NotFound();
+            }
+
+            var mapperConfig = new MapperConfiguration(cfg =>
+            {
+                cfg.CreateMap<Review, ReviewViewModel>();
+                cfg.CreateMap<User, UserViewModel>()
+                    .ForMember(nameof(UserViewModel.Name), opt => opt.MapFrom(x => x.UserName));
+            });
+            var mapper = new Mapper(mapperConfig);
+
+            var reviewViewModels = mapper.Map<IEnumerable<Review>, List<ReviewViewModel>>(reviews);
+            return reviewViewModels;
+        }
+
+        [Authorize]
+        [Route("rate")]
+        [HttpPut]
+        public ActionResult<ReviewViewModel> RateProduct(ReviewAddModel reviewAddModel)
+        {
+            if (!ModelState.IsValid)
+                return BadRequest(ModelState);
+
+            SetUser();
+            if (!_user.EmailConfirmed)
+            {
+                ModelState.AddModelError(string.Empty, "email not confirmed");
+                return BadRequest(ModelState);
+            }
+
+            var product = _applicationDb.Products.Include(x => x.Reviews)
+                .FirstOrDefault(x => x.Id == reviewAddModel.ProductId);
+
+            if (product == null)
+                return NotFound();
+
+            if (_applicationDb.Reviews.Any(x => x.Product.Id == product.Id && x.User.Id == _user.Id))
+                return BadRequest();
+
+            if (reviewAddModel.Rating < ApplicationConstants.MinRating ||
+                reviewAddModel.Rating > ApplicationConstants.MaxRating)
+            {
+                ModelState.AddModelError(string.Empty, "invalid rating");
+                return BadRequest(ModelState);
+            }
+
+            var mapperConfig = new MapperConfiguration(cfg =>
+            {
+                cfg.CreateMap<ReviewAddModel, Review>();
+
+                cfg.CreateMap<Review, ReviewViewModel>();
+                cfg.CreateMap<User, UserViewModel>()
+                    .ForMember(nameof(UserViewModel.Name), opt => opt.MapFrom(x => x.UserName));
+            });
+            var mapper = new Mapper(mapperConfig);
+
+            var review = mapper.Map<ReviewAddModel, Review>(reviewAddModel);
+            review.User = _user;
+            product.Reviews.Add(review);
+            _applicationDb.Products.Update(product);
+            _applicationDb.SaveChanges();
+
+            var reviewViewModel = mapper.Map<Review, ReviewViewModel>(review);
+
+            return Ok(reviewViewModel);
+        }
+
+        #endregion
+
 
         #region product categories
 
@@ -351,9 +444,9 @@ namespace WebStoreAPI.Controllers
             return categoryViewModels;
         }
 
-        [Authorize(Roles = RolesConstants.AdminRoleName + ", " + RolesConstants.SellerRoleName)]
+        [Authorize(Roles = ApplicationConstants.AdminRoleName + ", " + ApplicationConstants.SellerRoleName)]
         [Route("{productId}/addСategory/{categoryId}")]
-        [HttpPost]
+        [HttpPut]
         public ActionResult<CategoryViewModel> AddCategory(int productId, int categoryId)
         {
             var category = _applicationDb.Categories.Include(x => x.Parent).FirstOrDefault(x => x.Id == categoryId);
@@ -366,7 +459,7 @@ namespace WebStoreAPI.Controllers
             SetUser();
             IList<string> userRoles = _userManager.GetRolesAsync(_user).Result;
 
-            if (!userRoles.Contains(RolesConstants.AdminRoleName) && product.Store.Seller.Id != _user.Id)
+            if (!userRoles.Contains(ApplicationConstants.AdminRoleName) && product.Store.Seller.Id != _user.Id)
                 return BadRequest();
 
             if (product.Categories.Contains(category))
@@ -387,9 +480,9 @@ namespace WebStoreAPI.Controllers
             return Ok(categoryViewModel);
         }
 
-        [Authorize(Roles = RolesConstants.AdminRoleName + ", " + RolesConstants.SellerRoleName)]
+        [Authorize(Roles = ApplicationConstants.AdminRoleName + ", " + ApplicationConstants.SellerRoleName)]
         [Route("{productId}/removeСategory/{categoryId}")]
-        [HttpDelete]
+        [HttpPut]
         public ActionResult<CategoryViewModel> RemoveCategory(int productId, int categoryId)
         {
             var category = _applicationDb.Categories.Include(x => x.Parent).FirstOrDefault(x => x.Id == categoryId);
@@ -402,7 +495,7 @@ namespace WebStoreAPI.Controllers
             SetUser();
             IList<string> userRoles = _userManager.GetRolesAsync(_user).Result;
 
-            if (!userRoles.Contains(RolesConstants.AdminRoleName) && product.Store.Seller.Id != _user.Id)
+            if (!userRoles.Contains(ApplicationConstants.AdminRoleName) && product.Store.Seller.Id != _user.Id)
                 return BadRequest();
 
             product.Categories.Remove(category);
@@ -449,12 +542,15 @@ namespace WebStoreAPI.Controllers
             return base64ImageViewModels;
         }
 
-        [Authorize(Roles = RolesConstants.AdminRoleName + ", " + RolesConstants.SellerRoleName)]
+        [Authorize(Roles = ApplicationConstants.AdminRoleName + ", " + ApplicationConstants.SellerRoleName)]
         [Route("{productId}/addImage/{imageId}")]
-        [HttpPost]
+        [HttpPut]
         public ActionResult<Base64ImagePutModel> AddImage(long productId, long imageId)
         {
-            var image = _applicationDb.Images.Include(x => x.User).FirstOrDefault(x => x.Id == imageId);
+            SetUser();
+
+            var image = _applicationDb.Images.Include(x => x.User).Where(x => x.User.Id == _user.Id)
+                .FirstOrDefault(x => x.Id == imageId);
 
             var product = _applicationDb.Products.Include(x => x.Images).Include(x => x.Store)
                 .FirstOrDefault(x => x.Id == productId);
@@ -465,10 +561,9 @@ namespace WebStoreAPI.Controllers
             if (product.Images.Contains(image))
                 return BadRequest();
 
-            SetUser();
             IList<string> userRoles = _userManager.GetRolesAsync(_user).Result;
 
-            if (!userRoles.Contains(RolesConstants.AdminRoleName) && product.Store.Seller.Id != _user.Id)
+            if (!userRoles.Contains(ApplicationConstants.AdminRoleName) && product.Store.Seller.Id != _user.Id)
                 return BadRequest();
 
             product.Images.Add(image);
@@ -488,22 +583,23 @@ namespace WebStoreAPI.Controllers
             return Ok(base64ImageViewModel);
         }
 
-        [Authorize(Roles = RolesConstants.AdminRoleName + ", " + RolesConstants.SellerRoleName)]
+        [Authorize(Roles = ApplicationConstants.AdminRoleName + ", " + ApplicationConstants.SellerRoleName)]
         [Route("{productId}/removeImage/{imageId}")]
-        [HttpDelete]
+        [HttpPut]
         public ActionResult<Base64ImagePutModel> RemoveImage(long productId, long imageId)
         {
-            var image = _applicationDb.Images.Include(x => x.User).FirstOrDefault(x => x.Id == imageId);
+            SetUser();
+            var image = _applicationDb.Images.Include(x => x.User).Where(x => x.User.Id == _user.Id)
+                .FirstOrDefault(x => x.Id == imageId);
             var product = _applicationDb.Products.Include(x => x.Images).Include(x => x.Store)
                 .FirstOrDefault(x => x.Id == productId);
 
             if (image == null || product == null || !product.Images.Contains(image))
                 return NotFound();
 
-            SetUser();
             IList<string> userRoles = _userManager.GetRolesAsync(_user).Result;
 
-            if (!userRoles.Contains(RolesConstants.AdminRoleName) && product.Store.Seller.Id != _user.Id)
+            if (!userRoles.Contains(ApplicationConstants.AdminRoleName) && product.Store.Seller.Id != _user.Id)
                 return BadRequest();
 
             product.Images.Remove(image);
@@ -530,7 +626,7 @@ namespace WebStoreAPI.Controllers
         [HttpGet]
         public ActionResult<IEnumerable<TagViewModel>> GetTags(long productId)
         {
-            var product = _applicationDb.Products.Include(x => x.Tags).Include(x => x.Store)
+            var product = _applicationDb.Products.Include(x => x.Tags)
                 .FirstOrDefault(x => x.Id == productId);
 
             if (product == null)
@@ -547,9 +643,9 @@ namespace WebStoreAPI.Controllers
         }
 
 
-        [Authorize(Roles = RolesConstants.AdminRoleName)]
+        [Authorize(Roles = ApplicationConstants.AdminRoleName)]
         [Route("{productId}/addTag/{tagId}")]
-        [HttpPost]
+        [HttpPut]
         public ActionResult<TagViewModel> AddTag(long productId, int tagId)
         {
             var product = _applicationDb.Products.Include(x => x.Tags).FirstOrDefault(x => x.Id == productId);
@@ -575,9 +671,9 @@ namespace WebStoreAPI.Controllers
             return Ok(tagViewModels);
         }
 
-        [Authorize(Roles = RolesConstants.AdminRoleName)]
+        [Authorize(Roles = ApplicationConstants.AdminRoleName)]
         [Route("{productId}/removeTag/{tagId}")]
-        [HttpDelete]
+        [HttpPut]
         public ActionResult<TagViewModel> RemoveTag(long productId, int tagId)
         {
             var product = _applicationDb.Products.Include(x => x.Tags).FirstOrDefault(x => x.Id == productId);

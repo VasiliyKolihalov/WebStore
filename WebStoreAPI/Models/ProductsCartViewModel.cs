@@ -8,9 +8,7 @@ namespace WebStoreAPI.Models
     public class ProductsCartViewModel
     {
         public int Id { get; set; }
-        public UserViewModel User { get; set; }
         public List<ProductInCartViewModel> ProductsInCart { get; set; }
-        public decimal ProductsCartCost { get => ProductsInCart.Sum(x => x.Cost); }
-      
+        public decimal ProductsCartCost => ProductsInCart.Sum(x => x.Cost);
     }
 }

@@ -9,8 +9,7 @@ namespace WebStoreAPI.Models
 {
     public class CatergoryAddModel
     {
-        [Required]
-        public string Name { get; set; }
+        [Required] public string Name { get; set; }
         public int ParentId { get; set; }
     }
 }
