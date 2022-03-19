@@ -10,9 +10,12 @@ namespace WebStoreAPI.Models
     public class User : IdentityUser
     {
         public ProductsCart ProductsCart { get; set; }
+        public AvailableCurrencies RegionalCurrency { get; set; }
+
         public User()
         {
             ProductsCart = new ProductsCart();
         }
-    }
+    } 
 }
+

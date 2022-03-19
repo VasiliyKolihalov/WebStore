@@ -16,5 +16,12 @@ namespace WebStoreAPI.Models
         public int QuantityInStock { get; set; }
         public double? Rating { get; set; }
         public StorePutModel Store { get; set; }
+        
+        public AvailableCurrencies Сurrency { get; set; }
+
+        public ProductViewModel()
+        {
+            Сurrency= AvailableCurrencies.Rub;
+        }
     }
 }

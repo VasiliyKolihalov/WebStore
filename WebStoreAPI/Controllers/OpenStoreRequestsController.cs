@@ -9,6 +9,7 @@ using AutoMapper;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Identity;
+using Microsoft.AspNetCore.SignalR;
 using Microsoft.Extensions.Configuration;
 using Scriban;
 using WebStoreAPI.Services;
@@ -20,68 +21,39 @@ namespace WebStoreAPI.Controllers
     [ApiController]
     public class OpenStoreRequestsController : ControllerBase
     {
-        private readonly IApplicationContext _applicationDb;
+        private readonly OpenStoreRequestService _openStoreRequestService;
         private readonly UserManager<User> _userManager;
-        private readonly RoleManager<IdentityRole> _roleManager;
-        private readonly IConfiguration _configuration;
-        private User _user;
 
-        public OpenStoreRequestsController(IApplicationContext applicationContext, UserManager<User> userManager,
-            RoleManager<IdentityRole> roleManager, IConfiguration configuration)
+        public OpenStoreRequestsController(OpenStoreRequestService openStoreRequestService,
+            UserManager<User> userManager)
         {
-            _applicationDb = applicationContext;
+            _openStoreRequestService = openStoreRequestService;
             _userManager = userManager;
-            _roleManager = roleManager;
-            _configuration = configuration;
         }
 
-        private void SetUser()
+        private User GetUser()
         {
-            _user = _userManager.GetUserAsync(HttpContext.User).Result;
+            return _userManager.GetUserAsync(HttpContext.User).Result;
         }
 
         [Authorize(Roles = ApplicationConstants.AdminRoleName)]
         [HttpGet]
         public ActionResult<IEnumerable<OpenStoreRequestViewModel>> GetAll()
         {
-            var requests = _applicationDb.OpenStoreRequests.Include(x => x.User);
+            _openStoreRequestService.User = GetUser();
+            List<OpenStoreRequestViewModel> requestViews = _openStoreRequestService.GetAll() as List<OpenStoreRequestViewModel>;
 
-            var mapperConfig = new MapperConfiguration(cfg =>
-            {
-                cfg.CreateMap<OpenStoreRequest, OpenStoreRequestViewModel>();
-                cfg.CreateMap<User, UserViewModel>()
-                    .ForMember(nameof(UserViewModel.Name), opt => opt.MapFrom(x => x.UserName));
-            });
-
-            var mapper = new Mapper(mapperConfig);
-
-            var requestViewModels =
-                mapper.Map<IEnumerable<OpenStoreRequest>, List<OpenStoreRequestViewModel>>(requests);
-
-            return requestViewModels;
+            return Ok(requestViews);
         }
 
         [Authorize(Roles = ApplicationConstants.AdminRoleName)]
         [HttpGet("{requestId}")]
         public ActionResult<OpenStoreRequestViewModel> Get(int requestId)
         {
-            var request = _applicationDb.OpenStoreRequests.FirstOrDefault(x => x.Id == requestId);
+            _openStoreRequestService.User = GetUser();
+            OpenStoreRequestViewModel requestView = _openStoreRequestService.Get(requestId);
 
-            if (request == null)
-                return NotFound();
-
-            var mapperConfig = new MapperConfiguration(cfg =>
-            {
-                cfg.CreateMap<OpenStoreRequest, OpenStoreRequestViewModel>();
-                cfg.CreateMap<User, UserViewModel>()
-                    .ForMember(nameof(UserViewModel.Name), opt => opt.MapFrom(x => x.UserName));
-            });
-
-            var mapper = new Mapper(mapperConfig);
-
-            var requestViewModel = mapper.Map<OpenStoreRequest, OpenStoreRequestViewModel>(request);
-
-            return requestViewModel;
+            return Ok(requestView);
         }
 
         [HttpPost]
@@ -90,32 +62,10 @@ namespace WebStoreAPI.Controllers
             if (!ModelState.IsValid)
                 return BadRequest(ModelState);
 
-            SetUser();
-            if (!_user.EmailConfirmed)
-            {
-                ModelState.AddModelError(string.Empty, "email not confirmed");
-                return BadRequest(ModelState);
-            }
+            _openStoreRequestService.User = GetUser();
+            OpenStoreRequestViewModel requestView = _openStoreRequestService.Post(requestAddModel);
 
-            var mapperConfig = new MapperConfiguration(cfg =>
-            {
-                cfg.CreateMap<OpenStoreRequestAddModel, OpenStoreRequest>();
-
-                cfg.CreateMap<OpenStoreRequest, OpenStoreRequestViewModel>();
-                cfg.CreateMap<User, UserViewModel>()
-                    .ForMember(nameof(UserViewModel.Name), opt => opt.MapFrom(x => x.UserName));
-            });
-            var mapper = new Mapper(mapperConfig);
-
-            var request = mapper.Map<OpenStoreRequestAddModel, OpenStoreRequest>(requestAddModel);
-            request.User = _user;
-
-            _applicationDb.OpenStoreRequests.Add(request);
-            _applicationDb.SaveChanges();
-
-            var requestViewModel = mapper.Map<OpenStoreRequest, OpenStoreRequestViewModel>(request);
-
-            return Ok(requestViewModel);
+            return Ok(requestView);
         }
 
         [Authorize(Roles = ApplicationConstants.AdminRoleName)]
@@ -123,42 +73,10 @@ namespace WebStoreAPI.Controllers
         [HttpPost]
         public ActionResult<OpenStoreRequestViewModel> Accept(int requestId)
         {
-            var request = _applicationDb.OpenStoreRequests.Include(x => x.User).FirstOrDefault(x => x.Id == requestId);
+            _openStoreRequestService.User = GetUser();
+            OpenStoreRequestViewModel requestView = _openStoreRequestService.Accept(requestId);
 
-            if (request == null)
-                return NotFound();
-
-            IdentityRole sellerRole = _roleManager.FindByNameAsync("seller").Result;
-            _userManager.AddToRoleAsync(request.User, sellerRole.Name);
-
-            var store = new Store()
-            {
-                Name = request.StoreName,
-                Seller = request.User
-            };
-
-            _applicationDb.Stores.Add(store);
-            _applicationDb.OpenStoreRequests.Remove(request);
-            _applicationDb.SaveChanges();
-
-            var htmlString = System.IO.File.ReadAllText("Views/OpenStoreEmail.html");
-            Template template = Template.Parse(htmlString);
-            string message = template.Render(new {user_name = request.User.UserName, store_name = store.Name});
-            
-            var emailService = new EmailService(_configuration);
-            emailService.SendEmail(request.User.Email, "Заявка принята", message);
-
-            var mapperConfig = new MapperConfiguration(cfg =>
-            {
-                cfg.CreateMap<OpenStoreRequest, OpenStoreRequestViewModel>();
-                cfg.CreateMap<User, UserViewModel>()
-                    .ForMember(nameof(UserViewModel.Name), opt => opt.MapFrom(x => x.UserName));
-            });
-
-            var mapper = new Mapper(mapperConfig);
-
-            var requestViewModel = mapper.Map<OpenStoreRequest, OpenStoreRequestViewModel>(request);
-            return Ok(requestViewModel);
+            return Ok(requestView);
         }
     }
 }

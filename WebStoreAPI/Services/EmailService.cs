@@ -7,6 +7,8 @@ namespace WebStoreAPI.Services
     public class EmailService
     {
         private readonly IConfiguration _configuration;
+        private const string Host = "smtp.gmail.com";
+        private const int Port = 587;
         
         public EmailService(IConfiguration configuration)
         {
@@ -26,7 +28,7 @@ namespace WebStoreAPI.Services
             };
 
             using var client = new SmtpClient();
-            client.Connect("smtp.gmail.com", 587, false);
+            client.Connect(Host, Port, false);
             client.Authenticate(_configuration["CompanyData:Email"], _configuration["CompanyData:EmailPassword"]);
             client.Send(emailMessage);
 

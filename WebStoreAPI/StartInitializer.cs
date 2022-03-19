@@ -11,14 +11,15 @@ namespace WebStoreAPI
 {
     public static class StartInitializer
     {
-        public static void Initialize(UserManager<User> userManager, RoleManager<IdentityRole> roleManager, IConfiguration appConfiguration, ILogger<Program> logger)
+        public static void Initialize(UserManager<User> userManager, RoleManager<IdentityRole> roleManager,
+            IConfiguration appConfiguration, ILogger<Program> logger)
         {
-            if(roleManager.FindByNameAsync(ApplicationConstants.AdminRoleName).Result == null)
+            if (roleManager.FindByNameAsync(ApplicationConstants.AdminRoleName).Result == null)
             {
                 roleManager.CreateAsync(new IdentityRole(ApplicationConstants.AdminRoleName)).Wait();
             }
 
-            if(roleManager.FindByNameAsync(ApplicationConstants.UserRoleName).Result == null)
+            if (roleManager.FindByNameAsync(ApplicationConstants.UserRoleName).Result == null)
             {
                 roleManager.CreateAsync(new IdentityRole(ApplicationConstants.UserRoleName)).Wait();
             }
@@ -34,7 +35,7 @@ namespace WebStoreAPI
                 string email = appConfiguration["AdminData:Email"];
                 string password = appConfiguration["AdminData:Password"];
 
-                var admin = new User() {UserName = name, Email = email };
+                var admin = new User {UserName = name, Email = email, RegionalCurrency = AvailableCurrencies.Rub};
                 var result = userManager.CreateAsync(admin, password).Result;
 
                 if (result.Succeeded)
@@ -44,7 +45,7 @@ namespace WebStoreAPI
                 }
                 else
                 {
-                    foreach(var error in result.Errors)
+                    foreach (var error in result.Errors)
                     {
                         logger.LogError(error.Description);
                     }

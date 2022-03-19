@@ -18,40 +18,28 @@ namespace WebStoreAPI.Controllers
     [ApiController]
     public class AccountController : ControllerBase
     {
+        private readonly AccountService _accountService;
         private readonly UserManager<User> _userManager;
-        private readonly SignInManager<User> _signInManager;
-        private readonly IConfiguration _configuration;
-        private User _user;
 
-        public AccountController(UserManager<User> userManager, SignInManager<User> signInManager,
-            IConfiguration configuration)
+        public AccountController(AccountService accountService ,UserManager<User> userManager)
         {
-            _signInManager = signInManager;
+            _accountService = accountService;
             _userManager = userManager;
-            _configuration = configuration;
         }
 
-        private void SetUser()
+        private User GetUser()
         {
-            _user = _userManager.GetUserAsync(HttpContext.User).Result;
+            return _userManager.GetUserAsync(HttpContext.User).Result;
         }
 
         [Authorize]
         [HttpGet]
         public ActionResult<UserViewModel> Get()
         {
-            SetUser();
+            _accountService.User = GetUser();
+            UserViewModel userView = _accountService.Get();
 
-            var mapperConfig = new MapperConfiguration(cfg =>
-            {
-                cfg.CreateMap<User, UserViewModel>()
-                    .ForMember(nameof(UserViewModel.Name), opt => opt.MapFrom(x => x.UserName));
-            });
-            var mapper = new Mapper(mapperConfig);
-
-            var userViewModel = mapper.Map<User, UserViewModel>(_user);
-
-            return Ok(userViewModel);
+            return Ok(userView);
         }
 
         [Route("register")]
@@ -61,31 +49,9 @@ namespace WebStoreAPI.Controllers
             if (!ModelState.IsValid)
                 return BadRequest();
 
-            var user = new User() {Email = registerModel.Email, UserName = registerModel.Name};
-            IdentityResult result = _userManager.CreateAsync(user, registerModel.Password).Result;
-
-            var mapperConfig = new MapperConfiguration(cfg => cfg.CreateMap<User, UserViewModel>().ForMember(
-                nameof(UserViewModel.Name), opt =>
-                    opt.MapFrom(x => x.UserName)));
-
-            var mapper = new Mapper(mapperConfig);
-
-            if (result.Succeeded)
-            {
-                _userManager.AddToRoleAsync(user, "user").Wait();
-                _signInManager.SignInAsync(user, false).Wait();
-                var userViewModel = mapper.Map<User, UserViewModel>(user);
-                return Ok(userViewModel);
-            }
-            else
-            {
-                foreach (var error in result.Errors)
-                {
-                    ModelState.AddModelError(string.Empty, error.Description);
-                }
-
-                return BadRequest(ModelState);
-            }
+            _accountService.User = GetUser();
+            UserViewModel userView = _accountService.Register(registerModel);
+            return Ok(userView);
         }
 
         [Route("login")]
@@ -94,19 +60,10 @@ namespace WebStoreAPI.Controllers
         {
             if (!ModelState.IsValid)
                 return BadRequest();
-
-            SignInResult result = _signInManager
-                .PasswordSignInAsync(loginModel.Name, loginModel.Password, loginModel.RememberMe, false).Result;
-
-            if (result.Succeeded)
-            {
-                return Ok(result);
-            }
-            else
-            {
-                ModelState.AddModelError(string.Empty, "Incorrect login or password");
-                return BadRequest(ModelState);
-            }
+            
+            _accountService.User = GetUser();
+            SignInResult signInResult = _accountService.Login(loginModel);
+            return Ok(signInResult);
         }
 
         [Authorize]
@@ -114,8 +71,19 @@ namespace WebStoreAPI.Controllers
         [HttpPost]
         public ActionResult Logout()
         {
-            _signInManager.SignOutAsync().Wait();
+            _accountService.User = GetUser();
+            _accountService.Logout();
             return Ok();
+        }
+
+        [Authorize]
+        [Route("changeRegionalСurrency/{currency}")]
+        [HttpPut]
+        public ActionResult<AvailableCurrencies> ChangeRegionalСurrency(AvailableCurrencies currency)
+        {
+            _accountService.User = GetUser();
+            _accountService.ChangeRegionalСurrency(currency);
+            return Ok(currency);
         }
 
         [Authorize]
@@ -123,21 +91,16 @@ namespace WebStoreAPI.Controllers
         [HttpGet]
         public ActionResult SendConfirmationCode()
         {
-            SetUser();
-            string confirmCode = _userManager.GenerateEmailConfirmationTokenAsync(_user).Result;
-
+            var user = GetUser();
+            string confirmCode = _userManager.GenerateEmailConfirmationTokenAsync(user).Result;
             string callbackUrl = Url.Action(
-                action: nameof(ConfirmEmail),
+                action: nameof(_accountService.ConfirmEmail),
                 controller: "Account",
-                values: new {userId = _user.Id, code = confirmCode},
+                values: new {userId = user.Id, code = confirmCode},
                 protocol: HttpContext.Request.Scheme);
 
-            var htmlString = System.IO.File.ReadAllText("Views/ConfirmEmail.html");
-            Template template = Template.Parse(htmlString);
-            string message = template.Render(new {callback_url = callbackUrl});
-
-            var emailService = new EmailService(_configuration);
-            emailService.SendEmail(_user.Email, "Подтверждение почты", message);
+            _accountService.User = user;
+            _accountService.SendConfirmationCode(callbackUrl);
             return Ok();
         }
 
@@ -146,31 +109,9 @@ namespace WebStoreAPI.Controllers
         [HttpGet]
         public ActionResult ConfirmEmail(string userId, string code)
         {
-            if (userId == null || code == null)
-            {
-                return BadRequest();
-            }
-
-            var user = _userManager.FindByIdAsync(userId).Result;
-            if (user == null)
-            {
-                return NotFound();
-            }
-
-            IdentityResult result = _userManager.ConfirmEmailAsync(user, code).Result;
-            if (result.Succeeded)
-            {
-                return Ok(result);
-            }
-            else
-            {
-                foreach (var error in result.Errors)
-                {
-                    ModelState.AddModelError(string.Empty, error.Description);
-                }
-
-                return BadRequest(ModelState);
-            }
+            _accountService.User = GetUser();
+            _accountService.ConfirmEmail(userId, code);
+            return Ok();
         }
     }
 }

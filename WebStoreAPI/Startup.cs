@@ -12,6 +12,9 @@ using Microsoft.EntityFrameworkCore;
 using System.Linq;
 using System.Text.Json.Serialization;
 using System.Threading.Tasks;
+using Microsoft.AspNetCore.Diagnostics;
+using WebStoreAPI.Middlewares;
+using WebStoreAPI.Services;
 
 namespace WebStoreAPI
 {
@@ -46,6 +49,22 @@ namespace WebStoreAPI
 
             services.AddControllers()
                 .AddJsonOptions(opts => opts.JsonSerializerOptions.Converters.Add(new JsonStringEnumConverter()));
+
+            services.AddMemoryCache();
+
+            services.AddTransient<ICurrencyService, CurrencyService>();
+            services.AddTransient<EmailService>();
+            
+            services.AddTransient<ProductsService>();
+            services.AddTransient<ProductsCartService>();
+            services.AddTransient<AccountService>();
+            services.AddTransient<CategoriesService>();
+            services.AddTransient<ImageService>();
+            services.AddTransient<OpenStoreRequestService>();
+            services.AddTransient<RolesService>();
+            services.AddTransient<StoreService>();
+            services.AddTransient<TagsService>();
+            services.AddTransient<UsersService>();
         }
 
         public void Configure(IApplicationBuilder app, IWebHostEnvironment env)
@@ -58,8 +77,11 @@ namespace WebStoreAPI
             app.UseRouting();
             app.UseAuthentication();
             app.UseAuthorization();
+            
+            app.UseMiddleware<ErrorHandlerMiddleware>();
 
             app.UseEndpoints(endpoints => { endpoints.MapControllers(); });
+            
         }
     }
 }

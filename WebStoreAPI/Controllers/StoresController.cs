@@ -9,6 +9,7 @@ using System.Threading.Tasks;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.EntityFrameworkCore;
+using WebStoreAPI.Services;
 
 namespace WebStoreAPI.Controllers
 {
@@ -16,60 +17,36 @@ namespace WebStoreAPI.Controllers
     [ApiController]
     public class StoresController : ControllerBase
     {
-        private readonly IApplicationContext _applicationDb;
+        private readonly StoreService _storeService;
         private readonly UserManager<User> _userManager;
-        private User _user;
-
-        public StoresController(IApplicationContext applicationContext, UserManager<User> userManager)
+       
+        public StoresController(StoreService storeService, UserManager<User> userManager)
         {
-            _applicationDb = applicationContext;
+            _storeService = storeService;
             _userManager = userManager;
         }
 
-        private void SetUser()
+        private User GetUser()
         {
-            _user = _userManager.GetUserAsync(HttpContext.User).Result;
+            return _userManager.GetUserAsync(HttpContext.User).Result;
         }
 
         [HttpGet]
         public ActionResult<IEnumerable<StoreViewModel>> GetAll()
         {
-            var stores = _applicationDb.Stores.Include(x => x.Seller);
+            _storeService.User = GetUser();
+            List<StoreViewModel> storeViews = _storeService.GetAll() as List<StoreViewModel>;
 
-            var mapperConfig = new MapperConfiguration(cfg =>
-            {
-                cfg.CreateMap<Store, StoreViewModel>();
-
-                cfg.CreateMap<User, UserViewModel>()
-                    .ForMember(nameof(UserViewModel.Name), opt => opt.MapFrom(x => x.UserName));
-            });
-            var mapper = new Mapper(mapperConfig);
-
-            var storeViewModels = mapper.Map<IEnumerable<Store>, List<StoreViewModel>>(stores);
-
-            return storeViewModels;
+            return Ok(storeViews);
         }
 
         [HttpGet("{storeId}")]
         public ActionResult<StoreViewModel> Get(int storeId)
         {
-            var store = _applicationDb.Stores.FirstOrDefault(x => x.Id == storeId);
+            _storeService.User = GetUser();
+            StoreViewModel storeView = _storeService.Get(storeId);
 
-            if (store == null)
-                return NotFound();
-
-            var mapperConfig = new MapperConfiguration(cfg =>
-            {
-                cfg.CreateMap<Store, StoreViewModel>();
-
-                cfg.CreateMap<User, UserViewModel>()
-                    .ForMember(nameof(UserViewModel.Name), opt => opt.MapFrom(x => x.UserName));
-            });
-            var mapper = new Mapper(mapperConfig);
-
-            var storeViewModel = mapper.Map<Store, StoreViewModel>(store);
-
-            return storeViewModel;
+            return Ok(storeView);
         }
 
 
@@ -77,32 +54,10 @@ namespace WebStoreAPI.Controllers
         [HttpDelete("{storeId}")]
         public ActionResult<StoreViewModel> Delete(int storeId)
         {
-            SetUser();
-            IList<string> userRoles = _userManager.GetRolesAsync(_user).Result;
+            _storeService.User = GetUser();
+            StoreViewModel storeView = _storeService.Delete(storeId);
 
-            var store = _applicationDb.Stores.Include(x => x.Seller).FirstOrDefault(x => x.Id == storeId);
-
-            if (store == null)
-                return NotFound();
-
-            if (!userRoles.Contains("admin") && store.Seller.Id != _user.Id)
-                return BadRequest();
-
-            _applicationDb.Stores.Remove(store);
-            _applicationDb.SaveChanges();
-
-            var mapperConfig = new MapperConfiguration(cfg =>
-            {
-                cfg.CreateMap<Store, StoreViewModel>();
-
-                cfg.CreateMap<User, UserViewModel>()
-                    .ForMember(nameof(UserViewModel.Name), opt => opt.MapFrom(x => x.UserName));
-            });
-            var mapper = new Mapper(mapperConfig);
-
-            var storeViewModel = mapper.Map<Store, StoreViewModel>(store);
-
-            return Ok(storeViewModel);
+            return Ok(storeView);
         }
 
         [Authorize(Roles = ApplicationConstants.AdminRoleName + ", " + ApplicationConstants.SellerRoleName)]
@@ -112,28 +67,10 @@ namespace WebStoreAPI.Controllers
             if (!ModelState.IsValid)
                 return BadRequest(ModelState);
 
-            SetUser();
-            IList<string> userRoles = _userManager.GetRolesAsync(_user).Result;
+            _storeService.User = GetUser();
+            StoreViewModel storeView = _storeService.Put(storePutModel);
 
-            var store = _applicationDb.Stores.Include(x => x.Seller)
-                .AsNoTracking()
-                .FirstOrDefault(x => x.Id == storePutModel.Id);
-
-            if (store == null)
-                return NotFound();
-
-            if (!userRoles.Contains("admin") && store.Seller.Id != _user.Id)
-                return BadRequest();
-
-            var mapperConfig = new MapperConfiguration(cgf => cgf.CreateMap<StorePutModel, Store>());
-            var mapper = new Mapper(mapperConfig);
-
-            store = mapper.Map<StorePutModel, Store>(storePutModel);
-
-            _applicationDb.Stores.Update(store);
-            _applicationDb.SaveChanges();
-
-            return Ok(storePutModel);
+            return Ok(storeView);
         }
     }
 }
