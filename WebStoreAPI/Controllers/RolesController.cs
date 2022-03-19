@@ -7,6 +7,7 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Threading.Tasks;
 using Microsoft.AspNetCore.Authorization;
+using WebStoreAPI.Services;
 
 namespace WebStoreAPI.Controllers
 {
@@ -15,17 +16,17 @@ namespace WebStoreAPI.Controllers
     [ApiController]
     public class RolesController : ControllerBase
     {
-        private readonly RoleManager<IdentityRole> _roleManager;
+        private readonly RolesService _rolesService;
 
-        public RolesController(RoleManager<IdentityRole> roleManager)
+        public RolesController(RolesService rolesService)
         {
-            _roleManager = roleManager;
+            _rolesService = rolesService;
         }
 
         [HttpGet]
         public ActionResult<IEnumerable<IdentityRole>> GetAll()
         {
-            return _roleManager.Roles.ToList();
+            return Ok(_rolesService.GetAll());
         }
 
         [HttpPost("{roleName}")]
@@ -34,47 +35,15 @@ namespace WebStoreAPI.Controllers
             if (string.IsNullOrEmpty(roleName))
                 return BadRequest();
 
-            var role = new IdentityRole(roleName);
-            IdentityResult result = _roleManager.CreateAsync(role).Result;
-
-            if (result.Succeeded)
-            {
-                return Ok(role);
-            }
-            else
-            {
-                foreach (var error in result.Errors)
-                {
-                    ModelState.AddModelError(string.Empty, error.Description);
-                }
-
-                return BadRequest(ModelState);
-            }
+            IdentityRole role = _rolesService.Create(roleName);
+            return Ok(role);
         }
 
         [HttpDelete("{roleId}")]
         public ActionResult<IdentityRole> Delete(string roleId)
         {
-            var role = _roleManager.FindByIdAsync(roleId).Result;
-
-            if (role == null)
-                return NotFound();
-
-            IdentityResult result = _roleManager.DeleteAsync(role).Result;
-
-            if (result.Succeeded)
-            {
-                return Ok(role);
-            }
-            else
-            {
-                foreach (var error in result.Errors)
-                {
-                    ModelState.AddModelError(string.Empty, error.Description);
-                }
-
-                return BadRequest(ModelState);
-            }
+            IdentityRole role = _rolesService.Delete(roleId);
+            return Ok(role);
         }
     }
 }

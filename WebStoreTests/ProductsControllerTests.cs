@@ -15,6 +15,11 @@ using Microsoft.EntityFrameworkCore.Query;
 using System.Threading;
 using System.Linq;
 using System.ComponentModel.DataAnnotations;
+using Microsoft.AspNetCore.StaticFiles;
+using Microsoft.Extensions.Caching.Memory;
+using Org.BouncyCastle.Crypto.Engines;
+using WebStoreAPI.Exceptions;
+using WebStoreAPI.Services;
 
 namespace WebStoreTests
 {
@@ -23,47 +28,48 @@ namespace WebStoreTests
         [Fact]
         public void GetAllProducts_ShouldReturnAllProducts()
         {
-            Mock<IApplicationContext> mockContext = new Mock<IApplicationContext>();
-            Mock<DbSet<Product>> mockDbSetProducts = GetQueryableMockDbSet(GetTestProducts());
+            var testProducts = GetTestProducts();
+            Mock<DbSet<Product>> mockDbSetProducts = GetQueryableMockDbSet(testProducts);
+
+            var mockContext = new Mock<IApplicationContext>();
             mockContext.Setup(x => x.Products).Returns(mockDbSetProducts.Object);
+            var productsController = GetProductsController(mockContext.Object);
 
-            ProductsController productsController = new ProductsController(mockContext.Object, GetMockUserManager().Object);
+            var result = productsController.GetAll();
+            var resultProducts = (result.Result as OkObjectResult).Value as List<ProductViewModel>;
 
-            var result = productsController.GetAll().Value as List<ProductViewModel>;
-
-            Assert.Equal(result.Count, GetTestProducts().Count);
-
+            Assert.Equal(testProducts.Count, resultProducts.Count);
         }
 
 
         [Fact]
         public void GetProduct_ShouldReturnCorrectProduct()
         {
-            Mock<IApplicationContext> mockContext = new Mock<IApplicationContext>();
-            Mock<DbSet<Product>> mockDbSetProducts = GetQueryableMockDbSet(new List<Product>() { GetTestProduct() });
+            var testProduct = GetTestProduct();
+            Mock<DbSet<Product>> mockDbSetProducts = GetQueryableMockDbSet(new List<Product> {testProduct});
+
+            var mockContext = new Mock<IApplicationContext>();
             mockContext.Setup(x => x.Products).Returns(mockDbSetProducts.Object);
+            var productsController = GetProductsController(mockContext.Object);
 
-            ProductsController productsController = new ProductsController(mockContext.Object, GetMockUserManager().Object);
+            var result = productsController.Get(testProduct.Id);
+            var resultProduct = (result.Result as OkObjectResult).Value as ProductViewModel;
 
-            var result = productsController.Get(GetTestProduct().Id).Value;
-
-            Assert.Equal(GetTestProduct().Id, result.Id);
-
+            Assert.Equal(testProduct.Id, resultProduct.Id);
         }
 
 
         [Fact]
         public void GetProduct_ShouldNotFindProduct()
         {
-            Mock<IApplicationContext> mockContext = new Mock<IApplicationContext>();
-            Mock<DbSet<Product>> mockDbSetProducts = GetQueryableMockDbSet(new List<Product>() { GetTestProduct() });
+            Mock<DbSet<Product>> mockDbSetProducts = GetQueryableMockDbSet(new List<Product> {GetTestProduct()});
+
+            var mockContext = new Mock<IApplicationContext>();
             mockContext.Setup(x => x.Products).Returns(mockDbSetProducts.Object);
+            var productsController = GetProductsController(mockContext.Object);
 
-            ProductsController productsController = new ProductsController(mockContext.Object, GetMockUserManager().Object);
-
-            var result = productsController.Get(0);
-
-            Assert.IsType<NotFoundResult>(result.Result);
+            Action result = () => productsController.Get(0);
+            Assert.Throws<NotFoundException>(result);
         }
 
 
@@ -71,20 +77,20 @@ namespace WebStoreTests
         public void GetBasedStore_ShouldReturnAllStoreProducts()
         {
             var store = GetTestStore(GetTestUser());
+            var testProducts = GetTestProducts(store);
+            Mock<DbSet<Product>> mockDbSetProducts = GetQueryableMockDbSet(testProducts);
+            Mock<DbSet<Store>> mockDbSetStores = GetQueryableMockDbSet(new List<Store> {store});
 
-            Mock<IApplicationContext> mockContext = new Mock<IApplicationContext>();
-            Mock<DbSet<Product>> mockDbSetProducts = GetQueryableMockDbSet(GetTestProducts(store));
-            Mock<DbSet<Store>> mockDbSetStores = GetQueryableMockDbSet(new List<Store>() { store });
+            var mockContext = new Mock<IApplicationContext>();
             mockContext.Setup(x => x.Products).Returns(mockDbSetProducts.Object);
             mockContext.Setup(x => x.Stores).Returns(mockDbSetStores.Object);
+            var productsController = GetProductsController(mockContext.Object);
 
-            ProductsController productsController = new ProductsController(mockContext.Object, GetMockUserManager().Object);
+            var result = productsController.GetBasedStore(store.Id);
+            var resultProducts = (result.Result as OkObjectResult).Value as List<ProductViewModel>;
 
-            var result = productsController.GetBasedStore(store.Id).Value as List<ProductViewModel>;
-
-            Assert.Equal(result.Count, GetTestProducts(store).Count);
-            Assert.Equal(result[0].Store.Id, store.Id);
-
+            Assert.Equal(testProducts.Count, resultProducts.Count);
+            Assert.Equal(store.Id, resultProducts[0].Store.Id);
         }
 
 
@@ -92,18 +98,17 @@ namespace WebStoreTests
         public void GetBasedStore_ShouldNotFindProducts()
         {
             var store = GetTestStore(GetTestUser());
-
-            Mock<IApplicationContext> mockContext = new Mock<IApplicationContext>();
             Mock<DbSet<Product>> mockDbSetProducts = GetQueryableMockDbSet(GetTestProducts(store));
-            Mock<DbSet<Store>> mockDbSetStores = GetQueryableMockDbSet(new List<Store>() { store });
+            Mock<DbSet<Store>> mockDbSetStores = GetQueryableMockDbSet(new List<Store> {store});
+
+            var mockContext = new Mock<IApplicationContext>();
             mockContext.Setup(x => x.Products).Returns(mockDbSetProducts.Object);
             mockContext.Setup(x => x.Stores).Returns(mockDbSetStores.Object);
+            var productsController = GetProductsController(mockContext.Object);
 
-            ProductsController productsController = new ProductsController(mockContext.Object, GetMockUserManager().Object);
+            Action result = () => productsController.GetBasedStore(0);
 
-            var result = productsController.GetBasedStore(0);
-
-            Assert.IsType<NotFoundResult>(result.Result);
+            Assert.Throws<NotFoundException>(result);
         }
 
 
@@ -111,74 +116,77 @@ namespace WebStoreTests
         public void GetBasedCategory_ShouldReturnAllCategoryProducts()
         {
             var category = GetTestCategory();
+            var testProducts = GetTestProducts(category);
+            Mock<DbSet<Product>> mockDbSetProducts = GetQueryableMockDbSet(testProducts);
+            Mock<DbSet<Category>> mockDbSetCategories = GetQueryableMockDbSet(new List<Category> {category});
 
-            Mock<IApplicationContext> mockContext = new Mock<IApplicationContext>();
-            Mock<DbSet<Product>> mockDbSetProducts = GetQueryableMockDbSet(GetTestProducts(category));
-            Mock<DbSet<Category>> mockDbSetCategories = GetQueryableMockDbSet(new List<Category>() { category });
+            var mockContext = new Mock<IApplicationContext>();
             mockContext.Setup(x => x.Products).Returns(mockDbSetProducts.Object);
             mockContext.Setup(x => x.Categories).Returns(mockDbSetCategories.Object);
-            ProductsController productsController = new ProductsController(mockContext.Object, GetMockUserManager().Object);
+            var productsController = GetProductsController(mockContext.Object);
 
-            var result = productsController.GetBasedCategory(category.Id).Value as List<ProductViewModel>;
+            var result = productsController.GetBasedCategory(category.Id);
 
-            Assert.Equal(result.Count, GetTestProducts(category).Count);
+            var resultProducts = (result.Result as OkObjectResult).Value as List<ProductViewModel>;
+
+            Assert.Equal(testProducts.Count, resultProducts.Count);
         }
+
 
         [Fact]
         public void GetBasedCategory_ShouldNotFindProducts()
         {
             var category = GetTestCategory();
-
-            Mock<IApplicationContext> mockContext = new Mock<IApplicationContext>();
             Mock<DbSet<Product>> mockDbSetProducts = GetQueryableMockDbSet(GetTestProducts(category));
-            Mock<DbSet<Category>> mockDbSetCategories = GetQueryableMockDbSet(new List<Category>() { category });
+            Mock<DbSet<Category>> mockDbSetCategories = GetQueryableMockDbSet(new List<Category> {category});
+
+            var mockContext = new Mock<IApplicationContext>();
             mockContext.Setup(x => x.Products).Returns(mockDbSetProducts.Object);
             mockContext.Setup(x => x.Categories).Returns(mockDbSetCategories.Object);
+            var productsController = GetProductsController(mockContext.Object);
 
-            ProductsController productsController = new ProductsController(mockContext.Object, GetMockUserManager().Object);
+            Action result = () => productsController.GetBasedCategory(0);
 
-            var result = productsController.GetBasedCategory(0);
-
-            Assert.IsType<NotFoundResult>(result.Result);
-
+            Assert.Throws<NotFoundException>(result);
         }
 
         [Fact]
         public void GetBasedTag_ShouldReturnAllTagProducts()
         {
             var tag = GetTestTag();
+            var testProducts = GetTestProducts(tag);
+            Mock<DbSet<Product>> mockDbSetProducts = GetQueryableMockDbSet(testProducts);
+            Mock<DbSet<Tag>> mockDbSetTags = GetQueryableMockDbSet(new List<Tag>() {tag});
 
-            Mock<IApplicationContext> mockContext = new Mock<IApplicationContext>();
-            Mock<DbSet<Product>> mockDbSetProducts = GetQueryableMockDbSet(GetTestProducts(tag));
-            Mock<DbSet<Tag>> mockDbSetTags = GetQueryableMockDbSet(new List<Tag>() { tag });
+            var mockContext = new Mock<IApplicationContext>();
             mockContext.Setup(x => x.Products).Returns(mockDbSetProducts.Object);
             mockContext.Setup(x => x.Tags).Returns(mockDbSetTags.Object);
+            var productsController = GetProductsController(mockContext.Object);
 
-            ProductsController productsController = new ProductsController(mockContext.Object, GetMockUserManager().Object);
+            var result = productsController.GetBasedTag(tag.Id);
 
-            var result = productsController.GetBasedTag(tag.Id).Value as List<ProductViewModel>;
+            var resultProducts = (result.Result as OkObjectResult).Value as List<ProductViewModel>;
 
-            Assert.Equal(result.Count, GetTestProducts(tag).Count);
-
+            Assert.Equal(testProducts.Count, resultProducts.Count);
         }
+
 
         [Fact]
         public void GetBasedTag_ShouldNotFindProducts()
         {
             var tag = GetTestTag();
-
-            Mock<IApplicationContext> mockContext = new Mock<IApplicationContext>();
             Mock<DbSet<Product>> mockDbSetProducts = GetQueryableMockDbSet(GetTestProducts(tag));
-            Mock<DbSet<Tag>> mockDbSetTags = GetQueryableMockDbSet(new List<Tag>() { tag });
+            Mock<DbSet<Tag>> mockDbSetTags = GetQueryableMockDbSet(new List<Tag> {tag});
+
+            var mockContext = new Mock<IApplicationContext>();
             mockContext.Setup(x => x.Products).Returns(mockDbSetProducts.Object);
             mockContext.Setup(x => x.Tags).Returns(mockDbSetTags.Object);
 
-            ProductsController productsController = new ProductsController(mockContext.Object, GetMockUserManager().Object);
+            var productsController = GetProductsController(mockContext.Object);
 
-            var result = productsController.GetBasedTag(0);
+            Action result = () => productsController.GetBasedTag(0);
 
-            Assert.IsType<NotFoundResult>(result.Result);
-
+            Assert.Throws<NotFoundException>(result);
         }
 
 
@@ -187,25 +195,24 @@ namespace WebStoreTests
         {
             var testProduct = GetTestProductAddModel();
             var testUser = GetTestUser();
-            var userManagerMock = GetMockUserManager();
-            userManagerMock.Setup(x => x.GetUserAsync(It.IsAny<ClaimsPrincipal>()).Result).Returns(testUser);
-
-            Mock<IApplicationContext> mockContext = new Mock<IApplicationContext>();
             Mock<DbSet<Product>> mockDbSetProducts = GetQueryableMockDbSet(new List<Product>());
             Mock<DbSet<Store>> mockDbSetStore = GetQueryableMockDbSet(new List<Store>());
+            var mockUserManager = GetMockUserManager();
+            mockUserManager.Setup(x => x.GetUserAsync(It.IsAny<ClaimsPrincipal>()).Result).Returns(testUser);
+
+            var mockContext = new Mock<IApplicationContext>();
             mockContext.Setup(x => x.Products).Returns(mockDbSetProducts.Object);
             mockContext.Setup(x => x.Stores).Returns(mockDbSetStore.Object);
 
-            ProductsController productsController = new ProductsController(mockContext.Object, userManagerMock.Object);
-            productsController.ControllerContext.HttpContext = new DefaultHttpContext();
+            var productsController = GetProductsController(mockContext.Object, mockUserManager.Object);
 
             var result = productsController.Post(testProduct);
 
             var resultProduct = (result.Result as OkObjectResult).Value as ProductViewModel;
+
             Assert.IsType<OkObjectResult>(result.Result);
             Assert.Equal(testProduct.Name, resultProduct.Name);
             Assert.Null(resultProduct.Store);
-
         }
 
 
@@ -215,32 +222,32 @@ namespace WebStoreTests
             var testProduct = GetTestProductAddModel();
             var testUser = GetTestUser();
             var testStore = GetTestStore(testUser);
-            var userManagerMock = GetMockUserManager();
-            userManagerMock.Setup(x => x.GetUserAsync(It.IsAny<ClaimsPrincipal>()).Result).Returns(testUser);
-
             Mock<DbSet<Product>> mockDbSetProducts = GetQueryableMockDbSet(new List<Product>());
-            Mock<DbSet<Store>> mockDbSetStore = GetQueryableMockDbSet(new List<Store>() { testStore });
-            Mock<IApplicationContext> mockContext = new Mock<IApplicationContext>();
+            Mock<DbSet<Store>> mockDbSetStore = GetQueryableMockDbSet(new List<Store>() {testStore});
+            var mockUserManager = GetMockUserManager();
+            mockUserManager.Setup(x => x.GetUserAsync(It.IsAny<ClaimsPrincipal>()).Result).Returns(testUser);
+
+            var mockContext = new Mock<IApplicationContext>();
             mockContext.Setup(x => x.Products).Returns(mockDbSetProducts.Object);
             mockContext.Setup(x => x.Stores).Returns(mockDbSetStore.Object);
 
-            ProductsController productsController = new ProductsController(mockContext.Object, userManagerMock.Object);
-            productsController.ControllerContext.HttpContext = new DefaultHttpContext();
+            var productsController = GetProductsController(mockContext.Object, mockUserManager.Object);
 
             var result = productsController.Post(testProduct);
 
             var resultProduct = (result.Result as OkObjectResult).Value as ProductViewModel;
+
             Assert.IsType<OkObjectResult>(result.Result);
             Assert.Equal(testProduct.Name, resultProduct.Name);
             Assert.NotNull(resultProduct.Store);
-
         }
 
         [Fact]
         public void Post_ShouldReturnBadRequestBecauseFailValidation()
         {
-            Mock<IApplicationContext> mockContext = new Mock<IApplicationContext>();
-            ProductsController productsController = new ProductsController(mockContext.Object, GetMockUserManager().Object);
+            var mockContext = new Mock<IApplicationContext>();
+
+            var productsController = GetProductsController(mockContext.Object);
             productsController.ModelState.AddModelError(string.Empty, string.Empty);
 
             var result = productsController.Post(new ProductAddModel());
@@ -252,21 +259,22 @@ namespace WebStoreTests
         public void Delete_ShouldDeleteProductBasedOnAdminRole()
         {
             var testUser = GetTestUser();
-            var userManagerMock = GetMockUserManager();
             var testProduct = GetTestProduct();
-            userManagerMock.Setup(x => x.GetUserAsync(It.IsAny<ClaimsPrincipal>()).Result).Returns(testUser);
-            userManagerMock.Setup(x => x.GetRolesAsync(It.IsAny<User>()).Result).Returns(new List<string>() { ApplicationConstants.AdminRoleName });
-
+            Mock<DbSet<Product>> mockDbSetProducts = GetQueryableMockDbSet(new List<Product> {testProduct});
+            var mockUserManager = GetMockUserManager();
+            mockUserManager.Setup(x => x.GetUserAsync(It.IsAny<ClaimsPrincipal>()).Result).Returns(testUser);
+            mockUserManager.Setup(x => x.GetRolesAsync(It.IsAny<User>()).Result)
+                .Returns(new List<string> {ApplicationConstants.AdminRoleName});
+            
             Mock<IApplicationContext> mockContext = new Mock<IApplicationContext>();
-            Mock<DbSet<Product>> mockDbSetProducts = GetQueryableMockDbSet(new List<Product>() { testProduct });
             mockContext.Setup(x => x.Products).Returns(mockDbSetProducts.Object);
 
-            ProductsController productsController = new ProductsController(mockContext.Object, userManagerMock.Object);
-            productsController.ControllerContext.HttpContext = new DefaultHttpContext();
+            var productsController = GetProductsController(mockContext.Object, mockUserManager.Object);
 
             var result = productsController.Delete(testProduct.Id);
 
             var resultProduct = (result.Result as OkObjectResult).Value as ProductViewModel;
+
             Assert.IsType<OkObjectResult>(result.Result);
             Assert.Equal(resultProduct.Name, testProduct.Name);
         }
@@ -277,82 +285,85 @@ namespace WebStoreTests
             var testUser = GetTestUser();
             var testStore = GetTestStore(testUser);
             var testProduct = GetTestProduct(testStore);
-            var userManagerMock = GetMockUserManager();
-            userManagerMock.Setup(x => x.GetUserAsync(It.IsAny<ClaimsPrincipal>()).Result).Returns(testUser);
-            userManagerMock.Setup(x => x.GetRolesAsync(It.IsAny<User>()).Result).Returns(new List<string>() { ApplicationConstants.SellerRoleName });
+            Mock<DbSet<Product>> mockDbSetProducts = GetQueryableMockDbSet(new List<Product> {testProduct});
+            Mock<DbSet<Store>> mockDbSetStore = GetQueryableMockDbSet(new List<Store> {testStore});
+            var mockUserManager = GetMockUserManager();
+            mockUserManager.Setup(x => x.GetUserAsync(It.IsAny<ClaimsPrincipal>()).Result).Returns(testUser);
+            mockUserManager.Setup(x => x.GetRolesAsync(It.IsAny<User>()).Result)
+                .Returns(new List<string> {ApplicationConstants.SellerRoleName});
 
             Mock<IApplicationContext> mockContext = new Mock<IApplicationContext>();
-            Mock<DbSet<Product>> mockDbSetProducts = GetQueryableMockDbSet(new List<Product>() { testProduct });
-            Mock<DbSet<Store>> mockDbSetStore = GetQueryableMockDbSet(new List<Store>() { testStore });
             mockContext.Setup(x => x.Products).Returns(mockDbSetProducts.Object);
             mockContext.Setup(x => x.Stores).Returns(mockDbSetStore.Object);
 
-            ProductsController productsController = new ProductsController(mockContext.Object, userManagerMock.Object);
-            productsController.ControllerContext.HttpContext = new DefaultHttpContext();
+            var productsController = GetProductsController(mockContext.Object, mockUserManager.Object);
 
             var result = productsController.Delete(testProduct.Id);
 
             var resultProduct = (result.Result as OkObjectResult).Value as ProductViewModel;
+
             Assert.IsType<OkObjectResult>(result.Result);
             Assert.Equal(testProduct.Name, resultProduct.Name);
         }
+
 
         [Fact]
         public void Delete_ShouldReturnBadRequestBecauseNotEnoughRights()
         {
             var testUser = GetTestUser();
             var testStore = GetTestStore(testUser);
-            var userManagerMock = GetMockUserManager();
-            userManagerMock.Setup(x => x.GetUserAsync(It.IsAny<ClaimsPrincipal>()).Result).Returns(new User());
-            userManagerMock.Setup(x => x.GetRolesAsync(It.IsAny<User>()).Result).Returns(new List<string>() { ApplicationConstants.SellerRoleName });
+            Mock<DbSet<Product>> mockDbSetProducts =
+                GetQueryableMockDbSet(new List<Product> {GetTestProduct(testStore)});
+            Mock<DbSet<Store>> mockDbSetStore = GetQueryableMockDbSet(new List<Store> {testStore});
+            var mockUserManager = GetMockUserManager();
+            mockUserManager.Setup(x => x.GetUserAsync(It.IsAny<ClaimsPrincipal>()).Result).Returns(new User());
+            mockUserManager.Setup(x => x.GetRolesAsync(It.IsAny<User>()).Result)
+                .Returns(new List<string> {ApplicationConstants.SellerRoleName});
 
             Mock<IApplicationContext> mockContext = new Mock<IApplicationContext>();
-            Mock<DbSet<Product>> mockDbSetProducts = GetQueryableMockDbSet(new List<Product>() { GetTestProduct(testStore) });
-            Mock<DbSet<Store>> mockDbSetStore = GetQueryableMockDbSet(new List<Store>() { testStore });
             mockContext.Setup(x => x.Products).Returns(mockDbSetProducts.Object);
             mockContext.Setup(x => x.Stores).Returns(mockDbSetStore.Object);
+            var productsController = GetProductsController(mockContext.Object, mockUserManager.Object);
 
-            ProductsController productsController = new ProductsController(mockContext.Object, userManagerMock.Object);
-            productsController.ControllerContext.HttpContext = new DefaultHttpContext();
+            Action result = () => productsController.Delete(GetTestProduct(testStore).Id);
 
-            var result = productsController.Delete(GetTestProduct(testStore).Id);
-
-            Assert.IsType<BadRequestResult>(result.Result);
+            Assert.Throws<NotFoundException>(result);
         }
 
         [Fact]
         public void Delete_ShouldNotFindProduct()
         {
-            Mock<IApplicationContext> mockContext = new Mock<IApplicationContext>();
             Mock<DbSet<Product>> mockDbSetProducts = GetQueryableMockDbSet(new List<Product>(GetTestProducts()));
+
+            var mockContext = new Mock<IApplicationContext>();
             mockContext.Setup(x => x.Products).Returns(mockDbSetProducts.Object);
+            var productsController = GetProductsController(mockContext.Object);
 
-            ProductsController productsController = new ProductsController(mockContext.Object, GetMockUserManager().Object);
+            Action result = () => productsController.Delete(0);
 
-            var result = productsController.Delete(0);
-
-            Assert.IsType<NotFoundResult>(result.Result);
+            Assert.Throws<NotFoundException>(result);
         }
 
         [Fact]
         public void Put_ShouldUpdateProductBasedOnAdminRole()
         {
             var testProduct = GetTestProduct();
-            var userManagerMock = GetMockUserManager();
+            var mockUserManager = GetMockUserManager();
             var testUser = GetTestUser();
-            userManagerMock.Setup(x => x.GetUserAsync(It.IsAny<ClaimsPrincipal>()).Result).Returns(testUser);
-            userManagerMock.Setup(x => x.GetRolesAsync(It.IsAny<User>()).Result).Returns(new List<string>() { ApplicationConstants.AdminRoleName });
+            mockUserManager.Setup(x => x.GetUserAsync(It.IsAny<ClaimsPrincipal>()).Result).Returns(testUser);
+            mockUserManager.Setup(x => x.GetRolesAsync(It.IsAny<User>()).Result)
+                .Returns(new List<string> {ApplicationConstants.AdminRoleName});
+            
+            Mock<DbSet<Product>> mockDbSetProducts = GetQueryableMockDbSet(new List<Product>() {testProduct});
 
-            Mock<IApplicationContext> mockContext = new Mock<IApplicationContext>();
-            Mock<DbSet<Product>> mockDbSetProducts = GetQueryableMockDbSet(new List<Product>() { testProduct });
+            var mockContext = new Mock<IApplicationContext>();
             mockContext.Setup(x => x.Products).Returns(mockDbSetProducts.Object);
-
-            ProductsController productsController = new ProductsController(mockContext.Object, userManagerMock.Object);
-            productsController.ControllerContext.HttpContext = new DefaultHttpContext();
+            var productsController = GetProductsController(mockContext.Object, mockUserManager.Object);
 
             var result = productsController.Put(GetProductPutModel(testProduct));
 
             var resultProduct = (result.Result as OkObjectResult).Value as ProductViewModel;
+
             Assert.IsType<OkObjectResult>(result.Result);
             Assert.Equal(resultProduct.Id, testProduct.Id);
             Assert.NotEqual(resultProduct.Name, testProduct.Name);
@@ -361,23 +372,23 @@ namespace WebStoreTests
         [Fact]
         public void Put_ShouldUpdateProductBasedOnSellerRole()
         {
-            var userManagerMock = GetMockUserManager();
             var testUser = GetTestUser();
             var testStore = GetTestStore(testUser);
             var testProduct = GetTestProduct(testStore);
-            userManagerMock.Setup(x => x.GetUserAsync(It.IsAny<ClaimsPrincipal>()).Result).Returns(testUser);
-            userManagerMock.Setup(x => x.GetRolesAsync(It.IsAny<User>()).Result).Returns(new List<string>() { ApplicationConstants.SellerRoleName });
+            Mock<DbSet<Product>> mockDbSetProducts = GetQueryableMockDbSet(new List<Product>() {testProduct});
+            var mockUserManager = GetMockUserManager();
+            mockUserManager.Setup(x => x.GetUserAsync(It.IsAny<ClaimsPrincipal>()).Result).Returns(testUser);
+            mockUserManager.Setup(x => x.GetRolesAsync(It.IsAny<User>()).Result)
+                .Returns(new List<string>() {ApplicationConstants.SellerRoleName});
 
-            Mock<IApplicationContext> mockContext = new Mock<IApplicationContext>();
-            Mock<DbSet<Product>> mockDbSetProducts = GetQueryableMockDbSet(new List<Product>() { testProduct });
+            var mockContext = new Mock<IApplicationContext>();
             mockContext.Setup(x => x.Products).Returns(mockDbSetProducts.Object);
-
-            ProductsController productsController = new ProductsController(mockContext.Object, userManagerMock.Object);
-            productsController.ControllerContext.HttpContext = new DefaultHttpContext();
+            var productsController = GetProductsController(mockContext.Object, mockUserManager.Object);
 
             var result = productsController.Put(GetProductPutModel(testProduct));
 
             var resultProduct = (result.Result as OkObjectResult).Value as ProductViewModel;
+
             Assert.IsType<OkObjectResult>(result.Result);
             Assert.Equal(resultProduct.Id, testProduct.Id);
             Assert.NotEqual(resultProduct.Name, testProduct.Name);
@@ -386,40 +397,38 @@ namespace WebStoreTests
         [Fact]
         public void Put_ShouldReturnBadRequestBecauseNotEnoughRights()
         {
-            var userManagerMock = GetMockUserManager();
             var testUser = GetTestUser();
             var testStore = GetTestStore(testUser);
             var testProduct = GetTestProduct(testStore);
-            userManagerMock.Setup(x => x.GetUserAsync(It.IsAny<ClaimsPrincipal>()).Result).Returns(new User());
-            userManagerMock.Setup(x => x.GetRolesAsync(It.IsAny<User>()).Result).Returns(new List<string>() { ApplicationConstants.SellerRoleName });
+            Mock<DbSet<Product>> mockDbSetProducts = GetQueryableMockDbSet(new List<Product> {testProduct});
+            var mockUserManager = GetMockUserManager();
+            mockUserManager.Setup(x => x.GetUserAsync(It.IsAny<ClaimsPrincipal>()).Result).Returns(new User());
+            mockUserManager.Setup(x => x.GetRolesAsync(It.IsAny<User>()).Result)
+                .Returns(new List<string> {ApplicationConstants.SellerRoleName});
 
-            Mock<IApplicationContext> mockContext = new Mock<IApplicationContext>();
-            Mock<DbSet<Product>> mockDbSetProducts = GetQueryableMockDbSet(new List<Product>() { testProduct });
+            var mockContext = new Mock<IApplicationContext>();
             mockContext.Setup(x => x.Products).Returns(mockDbSetProducts.Object);
+            var productsController = GetProductsController(mockContext.Object, mockUserManager.Object);
 
-            ProductsController productsController = new ProductsController(mockContext.Object, userManagerMock.Object);
-            productsController.ControllerContext.HttpContext = new DefaultHttpContext();
+            Action result = () => productsController.Put(GetProductPutModel(testProduct));
 
-            var result = productsController.Put(GetProductPutModel(testProduct));
-
-            Assert.IsType<BadRequestResult>(result.Result);
-            
+            Assert.Throws<NotFoundException>(result);
         }
 
         [Fact]
         public void Put_ShouldReturnBadRequestBecauseFailValidation()
         {
-            var userManagerMock = GetMockUserManager();
             var testProduct = GetTestProduct();
 
             Mock<IApplicationContext> mockContext = new Mock<IApplicationContext>();
-            ProductsController productsController = new ProductsController(mockContext.Object, userManagerMock.Object);
+
+            var productsController = GetProductsController(mockContext.Object);
+            productsController.ControllerContext.HttpContext = new DefaultHttpContext();
             productsController.ModelState.AddModelError(string.Empty, string.Empty);
 
             var result = productsController.Put(GetProductPutModel(testProduct));
 
             Assert.IsType<BadRequestObjectResult>(result.Result);
-
         }
 
         [Fact]
@@ -427,17 +436,17 @@ namespace WebStoreTests
         {
             var testUser = GetTestUser();
             var testStore = GetTestStore(testUser);
-            var testProduct = GetTestProduct(testStore);        
+            var testProduct = GetTestProduct(testStore);
+            Mock<DbSet<Product>> mockDbSetProducts = GetQueryableMockDbSet(new List<Product>() {testProduct});
 
             Mock<IApplicationContext> mockContext = new Mock<IApplicationContext>();
-            Mock<DbSet<Product>> mockDbSetProducts = GetQueryableMockDbSet(new List<Product>() { testProduct });
             mockContext.Setup(x => x.Products).Returns(mockDbSetProducts.Object);
 
-            ProductsController productsController = new ProductsController(mockContext.Object, GetMockUserManager().Object);
+            var productsController = GetProductsController(mockContext.Object);
 
-            var result = productsController.Put(new ProductPutModel() {Id = 0 });
+            Action result = () => productsController.Put(new ProductPutModel() {Id = 0});
 
-            Assert.IsType<NotFoundResult>(result.Result);         
+            Assert.Throws<NotFoundException>(result);
         }
 
         private static List<Product> GetTestProducts()
@@ -456,9 +465,18 @@ namespace WebStoreTests
         {
             var products = new List<Product>()
             {
-                new Product {Id = 1, Name = "TestProduct1", Description = "Test", Cost = 1, QuantityInStock = 1, Store = store},
-                new Product {Id = 2, Name = "TestProduct2", Description = "Test", Cost = 1, QuantityInStock = 1, Store = store},
-                new Product {Id = 3, Name = "TestProduct3", Description = "Test", Cost = 1, QuantityInStock = 1, Store = store}
+                new Product
+                {
+                    Id = 1, Name = "TestProduct1", Description = "Test", Cost = 1, QuantityInStock = 1, Store = store
+                },
+                new Product
+                {
+                    Id = 2, Name = "TestProduct2", Description = "Test", Cost = 1, QuantityInStock = 1, Store = store
+                },
+                new Product
+                {
+                    Id = 3, Name = "TestProduct3", Description = "Test", Cost = 1, QuantityInStock = 1, Store = store
+                }
             };
 
             return products;
@@ -500,20 +518,22 @@ namespace WebStoreTests
 
         private static Product GetTestProduct()
         {
-            var testProduct = new Product { Id = 1, Name = "TestProduct1", Description = "Test", Cost = 1, QuantityInStock = 1 };
+            var testProduct = new Product
+                {Id = 1, Name = "TestProduct1", Description = "Test", Cost = 1, QuantityInStock = 1};
             return testProduct;
         }
 
         private static Product GetTestProduct(Store store)
         {
-            var product = new Product { Id = 1, Name = "TestProduct1", Description = "Test", Cost = 1, QuantityInStock = 1, Store = store };
+            var product = new Product
+                {Id = 1, Name = "TestProduct1", Description = "Test", Cost = 1, QuantityInStock = 1, Store = store};
             return product;
-
         }
 
         private static ProductAddModel GetTestProductAddModel()
         {
-            var testProductAddModel = new ProductAddModel() { Name = "TestProduct1", Description = "Test", Cost = 1, QuantityInStock = 1 };
+            var testProductAddModel = new ProductAddModel()
+                {Name = "TestProduct1", Description = "Test", Cost = 1, QuantityInStock = 1};
             return testProductAddModel;
         }
 
@@ -532,45 +552,79 @@ namespace WebStoreTests
 
         private static Store GetTestStore(User testSeller)
         {
-            var store = new Store() { Id = 1, Name = "TestStore1", Description = "Test store", Seller = testSeller };
+            var store = new Store {Id = 1, Name = "TestStore1", Description = "Test store", Seller = testSeller};
             return store;
         }
 
         private static User GetTestUser()
         {
-            var user = new User() { UserName = "TestUser1", Id = "testId" };
+            var user = new User {UserName = "TestUser1", Id = "testId"};
             return user;
         }
 
         private static Category GetTestCategory()
         {
-            var testCategory = new Category() { Id = 1, Name = "TestCategory1" };
+            var testCategory = new Category {Id = 1, Name = "TestCategory1"};
             return testCategory;
         }
 
         private static Tag GetTestTag()
         {
-            var tag = new Tag() { Id = 1, Name = "TestTag1", Description = "test tag" };
+            var tag = new Tag() {Id = 1, Name = "TestTag1", Description = "test tag"};
             return tag;
         }
 
         private static Mock<UserManager<User>> GetMockUserManager()
         {
             var userStoreMock = new Mock<IUserStore<User>>();
-            return new Mock<UserManager<User>>(userStoreMock.Object, null, null, null, null, null, null, null, null);
+            var userManager =
+                new Mock<UserManager<User>>(userStoreMock.Object, null, null, null, null, null, null, null, null);
+            userManager.Setup(x => x.GetUserAsync(It.IsAny<ClaimsPrincipal>()).Result).Returns(GetTestUser());
+            return userManager;
         }
 
         private static Mock<DbSet<T>> GetQueryableMockDbSet<T>(List<T> sourceList) where T : class
         {
             var queryable = sourceList.AsQueryable();
 
-            var mockDBSet = new Mock<DbSet<T>>();
-            mockDBSet.As<IQueryable<T>>().Setup(m => m.Provider).Returns(queryable.Provider);
-            mockDBSet.As<IQueryable<T>>().Setup(m => m.Expression).Returns(queryable.Expression);
-            mockDBSet.As<IQueryable<T>>().Setup(m => m.ElementType).Returns(queryable.ElementType);
-            mockDBSet.As<IQueryable<T>>().Setup(m => m.GetEnumerator()).Returns(() => queryable.GetEnumerator());
-            mockDBSet.Setup(d => d.Add(It.IsAny<T>())).Callback<T>((s) => sourceList.Add(s));
-            return mockDBSet;
+            var mockDbSet = new Mock<DbSet<T>>();
+            mockDbSet.As<IQueryable<T>>().Setup(m => m.Provider).Returns(queryable.Provider);
+            mockDbSet.As<IQueryable<T>>().Setup(m => m.Expression).Returns(queryable.Expression);
+            mockDbSet.As<IQueryable<T>>().Setup(m => m.ElementType).Returns(queryable.ElementType);
+            mockDbSet.As<IQueryable<T>>().Setup(m => m.GetEnumerator()).Returns(() => queryable.GetEnumerator());
+            mockDbSet.Setup(d => d.Add(It.IsAny<T>())).Callback<T>((s) => sourceList.Add(s));
+            return mockDbSet;
+        }
+
+        private static Mock<ICurrencyService> GetMockCurrencyService()
+        {
+            Mock<ICurrencyService> mockCurrencyService = new Mock<ICurrencyService>();
+            mockCurrencyService.Setup(x => x.ConvertCurrency(It.IsAny<decimal>(), It.IsAny<AvailableCurrencies>()))
+                .Returns(It.IsAny<decimal>());
+            return mockCurrencyService;
+        }
+
+        private static ProductsController GetProductsController(IApplicationContext context)
+        {
+            var mockUserManager = GetMockUserManager();
+            ProductsService productsService = new ProductsService(context, mockUserManager.Object,
+                GetMockCurrencyService().Object);
+
+            ProductsController productsController = new ProductsController(productsService,
+                mockUserManager.Object);
+            productsController.ControllerContext.HttpContext = new DefaultHttpContext();
+            return productsController;
+        }
+
+        private static ProductsController GetProductsController(IApplicationContext context, UserManager<User> userManager)
+        {
+            ProductsService productsService = new ProductsService(context, userManager,
+                GetMockCurrencyService().Object);
+
+            ProductsController productsController = new ProductsController(productsService,
+                userManager);
+            productsController.ControllerContext.HttpContext = new DefaultHttpContext();
+            return productsController;
         }
     }
 }
