@@ -31,12 +31,9 @@ namespace WebStoreAPI.Controllers
             _userManager = userManager;
         }
 
-        private User GetUser()
-        {
-            return _userManager.GetUserAsync(HttpContext.User).Result;
-        }
+        private User GetUser() => _userManager.GetUserAsync(User).Result;
 
-        [Authorize(Roles = ApplicationConstants.AdminRoleName)]
+        [Authorize(Roles = RolesConstants.AdminRoleName)]
         [HttpGet]
         public ActionResult<IEnumerable<OpenStoreRequestViewModel>> GetAll()
         {
@@ -46,7 +43,7 @@ namespace WebStoreAPI.Controllers
             return Ok(requestViews);
         }
 
-        [Authorize(Roles = ApplicationConstants.AdminRoleName)]
+        [Authorize(Roles = RolesConstants.AdminRoleName)]
         [HttpGet("{requestId}")]
         public ActionResult<OpenStoreRequestViewModel> Get(int requestId)
         {
@@ -68,7 +65,7 @@ namespace WebStoreAPI.Controllers
             return Ok(requestView);
         }
 
-        [Authorize(Roles = ApplicationConstants.AdminRoleName)]
+        [Authorize(Roles = RolesConstants.AdminRoleName)]
         [Route("{requestId}/accept")]
         [HttpPost]
         public ActionResult<OpenStoreRequestViewModel> Accept(int requestId)

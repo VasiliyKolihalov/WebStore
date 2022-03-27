@@ -45,7 +45,7 @@ namespace WebStoreAPI.Controllers
             return Ok(categoryViews);
         }
 
-        [Authorize(Roles = ApplicationConstants.AdminRoleName)]
+        [Authorize(Roles = RolesConstants.AdminRoleName)]
         [HttpPost]
         public ActionResult<CategoryViewModel> Post(CatergoryAddModel categoryAddModel)
         {
@@ -56,7 +56,7 @@ namespace WebStoreAPI.Controllers
             return Ok(categoryView);
         }
 
-        [Authorize(Roles = ApplicationConstants.AdminRoleName)]
+        [Authorize(Roles = RolesConstants.AdminRoleName)]
         [HttpPut]
         public ActionResult<CategoryViewModel> Put(CategoryViewModel categoryPutModel)
         {
@@ -67,7 +67,7 @@ namespace WebStoreAPI.Controllers
             return Ok(categoryView);
         }
 
-        [Authorize(Roles = ApplicationConstants.AdminRoleName)]
+        [Authorize(Roles = RolesConstants.AdminRoleName)]
         [HttpDelete("{id}")]
         public ActionResult<CategoryViewModel> Delete(int id)
         {

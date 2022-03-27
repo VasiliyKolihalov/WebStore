@@ -106,7 +106,7 @@ namespace WebStoreAPI.Services
             if (request == null)
                 throw new NotFoundException("request not found");
 
-            IdentityRole sellerRole = _roleManager.FindByNameAsync("seller").Result;
+            IdentityRole sellerRole = _roleManager.FindByNameAsync(RolesConstants.SellerRoleName).Result;
             _userManager.AddToRoleAsync(request.User, sellerRole.Name);
 
             var store = new Store()

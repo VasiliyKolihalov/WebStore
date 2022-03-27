@@ -11,7 +11,7 @@ using WebStoreAPI.Services;
 
 namespace WebStoreAPI.Controllers
 {
-    [Authorize(Roles = ApplicationConstants.AdminRoleName)]
+    [Authorize(Roles = RolesConstants.AdminRoleName)]
     [Route("api/[controller]")]
     [ApiController]
     public class RolesController : ControllerBase

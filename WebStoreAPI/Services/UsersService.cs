@@ -14,14 +14,11 @@ namespace WebStoreAPI.Services
     {
         private readonly UserManager<User> _userManager;
         private readonly RoleManager<IdentityRole> _roleManager;
-        private readonly SignInManager<User> _signInManager;
 
-        public UsersService(UserManager<User> userManager, RoleManager<IdentityRole> roleManager,
-            SignInManager<User> signInManager)
+        public UsersService(UserManager<User> userManager, RoleManager<IdentityRole> roleManager)
         {
             _userManager = userManager;
             _roleManager = roleManager;
-            _signInManager = signInManager;
         }
         
         public IEnumerable<UserViewModel> GetAll()
@@ -89,6 +86,17 @@ namespace WebStoreAPI.Services
             }
         }
         
+        public IEnumerable<string> GetRoles(string userId)
+        {
+            var user = _userManager.FindByIdAsync(userId).Result;
+
+            if (user == null)
+                throw new NotFoundException("user not found");
+
+            IList<string> roles = _userManager.GetRolesAsync(user).Result;
+            return roles;
+        }
+        
         public UserViewModel AddRole(string userId, string roleName)
         {
             var user = _userManager.Users.FirstOrDefault(x => x.Id == userId);
@@ -108,7 +116,6 @@ namespace WebStoreAPI.Services
 
             if (result.Succeeded)
             {
-                _signInManager.RefreshSignInAsync(user).Wait();
                 var userViewModel = mapper.Map<User, UserViewModel>(user);
                 return userViewModel;
             }
@@ -141,7 +148,6 @@ namespace WebStoreAPI.Services
 
             if (result.Succeeded)
             {
-                _signInManager.RefreshSignInAsync(user).Wait();
                 var userViewModel = mapper.Map<User, UserViewModel>(user);
                 return userViewModel;
             }

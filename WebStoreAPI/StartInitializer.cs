@@ -14,19 +14,19 @@ namespace WebStoreAPI
         public static void Initialize(UserManager<User> userManager, RoleManager<IdentityRole> roleManager,
             IConfiguration appConfiguration, ILogger<Program> logger)
         {
-            if (roleManager.FindByNameAsync(ApplicationConstants.AdminRoleName).Result == null)
+            if (roleManager.FindByNameAsync(RolesConstants.AdminRoleName).Result == null)
             {
-                roleManager.CreateAsync(new IdentityRole(ApplicationConstants.AdminRoleName)).Wait();
+                roleManager.CreateAsync(new IdentityRole(RolesConstants.AdminRoleName)).Wait();
             }
 
-            if (roleManager.FindByNameAsync(ApplicationConstants.UserRoleName).Result == null)
+            if (roleManager.FindByNameAsync(RolesConstants.UserRoleName).Result == null)
             {
-                roleManager.CreateAsync(new IdentityRole(ApplicationConstants.UserRoleName)).Wait();
+                roleManager.CreateAsync(new IdentityRole(RolesConstants.UserRoleName)).Wait();
             }
 
-            if (roleManager.FindByNameAsync(ApplicationConstants.SellerRoleName).Result == null)
+            if (roleManager.FindByNameAsync(RolesConstants.SellerRoleName).Result == null)
             {
-                roleManager.CreateAsync(new IdentityRole(ApplicationConstants.SellerRoleName)).Wait();
+                roleManager.CreateAsync(new IdentityRole(RolesConstants.SellerRoleName)).Wait();
             }
 
             if (userManager.FindByNameAsync("admin").Result == null)
@@ -40,8 +40,8 @@ namespace WebStoreAPI
 
                 if (result.Succeeded)
                 {
-                    userManager.AddToRoleAsync(admin, ApplicationConstants.AdminRoleName).Wait();
-                    userManager.AddToRoleAsync(admin, ApplicationConstants.SellerRoleName).Wait();
+                    userManager.AddToRoleAsync(admin, RolesConstants.AdminRoleName).Wait();
+                    userManager.AddToRoleAsync(admin, RolesConstants.SellerRoleName).Wait();
                 }
                 else
                 {

@@ -280,7 +280,7 @@ namespace WebStoreAPI.Services
 
             IList<string> userRoles = _userManager.GetRolesAsync(User).Result;
 
-            if (product == null || !userRoles.Contains(ApplicationConstants.AdminRoleName) &&
+            if (product == null || !userRoles.Contains(RolesConstants.AdminRoleName) &&
                 product.Store.Seller.Id != User.Id)
                 throw new NotFoundException("product not found");
 
@@ -307,7 +307,7 @@ namespace WebStoreAPI.Services
 
             IList<string> userRoles = _userManager.GetRolesAsync(User).Result;
 
-            if (product == null || !userRoles.Contains(ApplicationConstants.AdminRoleName) &&
+            if (product == null || !userRoles.Contains(RolesConstants.AdminRoleName) &&
                 product.Store.Seller.Id != User.Id)
                 throw new NotFoundException("product not found");
 
@@ -419,7 +419,7 @@ namespace WebStoreAPI.Services
 
             IList<string> userRoles = _userManager.GetRolesAsync(User).Result;
 
-            if (product == null || !userRoles.Contains(ApplicationConstants.AdminRoleName) &&
+            if (product == null || !userRoles.Contains(RolesConstants.AdminRoleName) &&
                 product.Store.Seller.Id != User.Id)
                 throw new NotFoundException("product not found");
 
@@ -449,7 +449,7 @@ namespace WebStoreAPI.Services
 
             IList<string> userRoles = _userManager.GetRolesAsync(User).Result;
 
-            if (product == null || !userRoles.Contains(ApplicationConstants.AdminRoleName) &&
+            if (product == null || !userRoles.Contains(RolesConstants.AdminRoleName) &&
                 product.Store.Seller.Id != User.Id)
                 throw new NotFoundException("product not found");
 
@@ -509,7 +509,7 @@ namespace WebStoreAPI.Services
 
             IList<string> userRoles = _userManager.GetRolesAsync(User).Result;
 
-            if (product == null || !userRoles.Contains(ApplicationConstants.AdminRoleName) &&
+            if (product == null || !userRoles.Contains(RolesConstants.AdminRoleName) &&
                 product.Store.Seller.Id != User.Id)
                 throw new NotFoundException("product not found");
 
@@ -543,7 +543,7 @@ namespace WebStoreAPI.Services
 
             IList<string> userRoles = _userManager.GetRolesAsync(User).Result;
 
-            if (product == null || !userRoles.Contains(ApplicationConstants.AdminRoleName) &&
+            if (product == null || !userRoles.Contains(RolesConstants.AdminRoleName) &&
                 product.Store.Seller.Id != User.Id)
                 throw new NotFoundException("product not found");
 

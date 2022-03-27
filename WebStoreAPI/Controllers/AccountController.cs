@@ -1,12 +1,15 @@
 ﻿using System;
+using System.IdentityModel.Tokens.Jwt;
 using System.Linq;
 using System.Net.Http;
+using System.Security.Claims;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Identity;
 using WebStoreAPI.Models;
 using SignInResult = Microsoft.AspNetCore.Identity.SignInResult;
 using Microsoft.AspNetCore.Authorization;
 using AutoMapper;
+using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Configuration;
 using WebStoreAPI.Services;
@@ -27,11 +30,9 @@ namespace WebStoreAPI.Controllers
             _userManager = userManager;
         }
 
-        private User GetUser()
-        {
-            return _userManager.GetUserAsync(HttpContext.User).Result;
-        }
-
+        private User GetUser() => _userManager.GetUserAsync(User).Result;
+        
+        
         [Authorize]
         [HttpGet]
         public ActionResult<UserViewModel> Get()
@@ -49,9 +50,8 @@ namespace WebStoreAPI.Controllers
             if (!ModelState.IsValid)
                 return BadRequest();
 
-            _accountService.User = GetUser();
-            UserViewModel userView = _accountService.Register(registerModel);
-            return Ok(userView);
+            string token = _accountService.Register(registerModel);
+            return Ok(token);
         }
 
         [Route("login")]
@@ -61,19 +61,8 @@ namespace WebStoreAPI.Controllers
             if (!ModelState.IsValid)
                 return BadRequest();
             
-            _accountService.User = GetUser();
-            SignInResult signInResult = _accountService.Login(loginModel);
-            return Ok(signInResult);
-        }
-
-        [Authorize]
-        [Route("logout")]
-        [HttpPost]
-        public ActionResult Logout()
-        {
-            _accountService.User = GetUser();
-            _accountService.Logout();
-            return Ok();
+            string token = _accountService.Login(loginModel);
+            return Ok(token);
         }
 
         [Authorize]

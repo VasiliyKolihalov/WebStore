@@ -50,7 +50,7 @@ namespace WebStoreAPI.Controllers
         }
 
 
-        [Authorize(Roles = ApplicationConstants.AdminRoleName + ", " + ApplicationConstants.SellerRoleName)]
+        [Authorize(Roles = RolesConstants.AdminRoleName + ", " + RolesConstants.SellerRoleName)]
         [HttpDelete("{storeId}")]
         public ActionResult<StoreViewModel> Delete(int storeId)
         {
@@ -60,7 +60,7 @@ namespace WebStoreAPI.Controllers
             return Ok(storeView);
         }
 
-        [Authorize(Roles = ApplicationConstants.AdminRoleName + ", " + ApplicationConstants.SellerRoleName)]
+        [Authorize(Roles = RolesConstants.AdminRoleName + ", " + RolesConstants.SellerRoleName)]
         [HttpPut]
         public ActionResult<StoreViewModel> Put(StorePutModel storePutModel)
         {

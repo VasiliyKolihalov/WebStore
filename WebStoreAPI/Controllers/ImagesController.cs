@@ -27,10 +27,7 @@ namespace WebStoreAPI.Controllers
             _userManager = userManager;
         }
 
-        private User GetUser()
-        {
-            return _userManager.GetUserAsync(HttpContext.User).Result;
-        }
+        private User GetUser() => _userManager.GetUserAsync(User).Result;
 
         [HttpGet]
         public ActionResult<IEnumerable<Base64ImageViewModel>> GetAll()
