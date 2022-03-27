@@ -26,10 +26,7 @@ namespace WebStoreAPI.Controllers
             _userManager = userManager;
         }
 
-        private User GetUser()
-        {
-            return _userManager.GetUserAsync(HttpContext.User).Result;
-        }
+        private User GetUser() => _userManager.GetUserAsync(User).Result;
 
         [HttpGet]
         public ActionResult<IEnumerable<ProductViewModel>> GetAll()
@@ -103,7 +100,7 @@ namespace WebStoreAPI.Controllers
             return Ok(productsViews);
         }
 
-        [Authorize(Roles = ApplicationConstants.AdminRoleName + ", " + ApplicationConstants.SellerRoleName)]
+        [Authorize(Roles = RolesConstants.AdminRoleName + ", " + RolesConstants.SellerRoleName)]
         [HttpPost]
         public ActionResult<ProductViewModel> Post(ProductAddModel productAddModel)
         {
@@ -116,7 +113,7 @@ namespace WebStoreAPI.Controllers
             return Ok(productView);
         }
 
-        [Authorize(Roles = ApplicationConstants.AdminRoleName + ", " + ApplicationConstants.SellerRoleName)]
+        [Authorize(Roles = RolesConstants.AdminRoleName + ", " + RolesConstants.SellerRoleName)]
         [HttpDelete("{id}")]
         public ActionResult<ProductViewModel> Delete(long id)
         {
@@ -126,7 +123,7 @@ namespace WebStoreAPI.Controllers
             return Ok(productView);
         }
 
-        [Authorize(Roles = ApplicationConstants.AdminRoleName + ", " + ApplicationConstants.SellerRoleName)]
+        [Authorize(Roles = RolesConstants.AdminRoleName + ", " + RolesConstants.SellerRoleName)]
         [HttpPut]
         public ActionResult<ProductViewModel> Put(ProductPutModel productPutModel)
         {
@@ -188,7 +185,7 @@ namespace WebStoreAPI.Controllers
             return Ok(categoryViews);
         }
 
-        [Authorize(Roles = ApplicationConstants.AdminRoleName + ", " + ApplicationConstants.SellerRoleName)]
+        [Authorize(Roles = RolesConstants.AdminRoleName + ", " + RolesConstants.SellerRoleName)]
         [Route("{productId}/addСategory/{categoryId}")]
         [HttpPut]
         public ActionResult<CategoryViewModel> AddCategory(int productId, int categoryId)
@@ -199,7 +196,7 @@ namespace WebStoreAPI.Controllers
             return Ok(categoryView);
         }
 
-        [Authorize(Roles = ApplicationConstants.AdminRoleName + ", " + ApplicationConstants.SellerRoleName)]
+        [Authorize(Roles = RolesConstants.AdminRoleName + ", " + RolesConstants.SellerRoleName)]
         [Route("{productId}/removeСategory/{categoryId}")]
         [HttpPut]
         public ActionResult<CategoryViewModel> RemoveCategory(int productId, int categoryId)
@@ -225,7 +222,7 @@ namespace WebStoreAPI.Controllers
             return Ok(base64ImageViews);
         }
 
-        [Authorize(Roles = ApplicationConstants.AdminRoleName + ", " + ApplicationConstants.SellerRoleName)]
+        [Authorize(Roles = RolesConstants.AdminRoleName + ", " + RolesConstants.SellerRoleName)]
         [Route("{productId}/addImage/{imageId}")]
         [HttpPut]
         public ActionResult<Base64ImagePutModel> AddImage(long productId, long imageId)
@@ -236,7 +233,7 @@ namespace WebStoreAPI.Controllers
             return Ok(base64ImageView);
         }
 
-        [Authorize(Roles = ApplicationConstants.AdminRoleName + ", " + ApplicationConstants.SellerRoleName)]
+        [Authorize(Roles = RolesConstants.AdminRoleName + ", " + RolesConstants.SellerRoleName)]
         [Route("{productId}/removeImage/{imageId}")]
         [HttpPut]
         public ActionResult<Base64ImagePutModel> RemoveImage(long productId, long imageId)
@@ -261,7 +258,7 @@ namespace WebStoreAPI.Controllers
             return tagViews;
         }
 
-        [Authorize(Roles = ApplicationConstants.AdminRoleName)]
+        [Authorize(Roles = RolesConstants.AdminRoleName)]
         [Route("{productId}/addTag/{tagId}")]
         [HttpPut]
         public ActionResult<TagViewModel> AddTag(long productId, int tagId)
@@ -272,7 +269,7 @@ namespace WebStoreAPI.Controllers
             return Ok(tagView);
         }
 
-        [Authorize(Roles = ApplicationConstants.AdminRoleName)]
+        [Authorize(Roles = RolesConstants.AdminRoleName)]
         [Route("{productId}/removeTag/{tagId}")]
         [HttpPut]
         public ActionResult<TagViewModel> RemoveTag(long productId, int tagId)

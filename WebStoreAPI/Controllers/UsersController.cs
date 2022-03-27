@@ -37,8 +37,8 @@ namespace WebStoreAPI.Controllers
             UserViewModel userView = _usersService.Get(userId);
             return Ok(userView);
         }
-        
-        [Authorize(Roles = ApplicationConstants.AdminRoleName)]
+
+        [Authorize(Roles = RolesConstants.AdminRoleName)]
         [HttpDelete("{userId}")]
         public ActionResult<UserViewModel> Delete(string userId)
         {
@@ -46,7 +46,14 @@ namespace WebStoreAPI.Controllers
             return Ok(userView);
         }
         
-        [Authorize(Roles = ApplicationConstants.AdminRoleName)]
+        [HttpGet("{userId}/getRoles")]
+        public ActionResult<IEnumerable<string>> GetRoles(string userId)
+        {
+            List<string> roles = _usersService.GetRoles(userId) as List<string>;
+            return Ok(roles);
+        }
+        
+        [Authorize(Roles = RolesConstants.AdminRoleName)]
         [HttpPost]
         [Route("{userId}/addRole/{roleName}")]
         public ActionResult<UserViewModel> AddRole(string userId, string roleName)
@@ -55,7 +62,7 @@ namespace WebStoreAPI.Controllers
             return Ok(userView);
         }
 
-        [Authorize(Roles = ApplicationConstants.AdminRoleName)]
+        [Authorize(Roles = RolesConstants.AdminRoleName)]
         [HttpPost]
         [Route("{userId}/removeRole/{roleName}")]
         public ActionResult<UserViewModel> RemoveRole(string userId, string roleName)

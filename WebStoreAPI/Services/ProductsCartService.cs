@@ -183,6 +183,11 @@ namespace WebStoreAPI.Services
 
         public IEnumerable<ProductInCartViewModel> BuySelectedProducts()
         {
+            if (!User.EmailConfirmed)
+            {
+                throw new BadRequestException("email not confirmed");
+            }
+            
             InitializeProductsCart();
             List<ProductInCart> selectedProductsInCart = _productsCart.ProductsInCart.Where(x => x.Selected).ToList();
 

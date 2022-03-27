@@ -1,5 +1,8 @@
 ﻿using System;
 using System.Collections.Generic;
+using System.IdentityModel.Tokens.Jwt;
+using System.Linq;
+using System.Security.Claims;
 using System.Security.Policy;
 using AutoMapper;
 using Microsoft.AspNetCore.Authorization;
@@ -7,29 +10,31 @@ using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.Extensions.Configuration;
+using Microsoft.Extensions.Options;
+using Microsoft.IdentityModel.Tokens;
 using Scriban;
 using WebStoreAPI.Exceptions;
 using WebStoreAPI.Models;
-using SignInResult = Microsoft.AspNetCore.Identity.SignInResult;
+using JwtRegisteredClaimNames = Microsoft.IdentityModel.JsonWebTokens.JwtRegisteredClaimNames;
 
 namespace WebStoreAPI.Services
 {
     public class AccountService
     {
         private readonly UserManager<User> _userManager;
-        private readonly SignInManager<User> _signInManager;
+        private readonly IOptions<JwtAuthenticationOptions> _jwtAuthOptions;
         private readonly IConfiguration _configuration;
 
-        public AccountService(UserManager<User> userManager, SignInManager<User> signInManager,
+        public AccountService(UserManager<User> userManager, IOptions<JwtAuthenticationOptions> jwtAuthOptions,
             IConfiguration configuration)
         {
-            _signInManager = signInManager;
             _userManager = userManager;
+            _jwtAuthOptions = jwtAuthOptions;
             _configuration = configuration;
         }
-        
+
         public User User { private get; set; }
-        
+
         public UserViewModel Get()
         {
             var mapperConfig = new MapperConfiguration(cfg =>
@@ -43,24 +48,21 @@ namespace WebStoreAPI.Services
 
             return userViewModel;
         }
-        
-        public UserViewModel Register(RegisterUserModel registerModel)
+
+        public string Register(RegisterUserModel registerModel)
         {
-            var user = new User {Email = registerModel.Email, UserName = registerModel.Name, RegionalCurrency = AvailableCurrencies.Rub};
+            var user = new User
+            {
+                Email = registerModel.Email, UserName = registerModel.Name, RegionalCurrency = AvailableCurrencies.Rub
+            };
             IdentityResult result = _userManager.CreateAsync(user, registerModel.Password).Result;
 
-            var mapperConfig = new MapperConfiguration(cfg => cfg.CreateMap<User, UserViewModel>().ForMember(
-                nameof(UserViewModel.Name), opt =>
-                    opt.MapFrom(x => x.UserName)));
-
-            var mapper = new Mapper(mapperConfig);
 
             if (result.Succeeded)
             {
                 _userManager.AddToRoleAsync(user, "user").Wait();
-                _signInManager.SignInAsync(user, false).Wait();
-                var userViewModel = mapper.Map<User, UserViewModel>(user);
-                return userViewModel;
+                var token = GenerateJwt(user);
+                return token;
             }
             else
             {
@@ -69,30 +71,24 @@ namespace WebStoreAPI.Services
                 {
                     errors += " " + error.Description;
                 }
-                throw  new Exception(errors);
+
+                throw new BadRequestException(errors);
             }
         }
 
-       
-        public SignInResult Login(LoginUserModel loginModel)
-        {
-            SignInResult result = _signInManager
-                .PasswordSignInAsync(loginModel.Name, loginModel.Password, loginModel.RememberMe, false).Result;
 
-            if (result.Succeeded)
-            {
-                return result;
-            }
-            else
+        public string Login(LoginUserModel loginModel)
+        {
+            var user = _userManager.FindByEmailAsync(loginModel.Email).Result;
+            if (!_userManager.CheckPasswordAsync(user, loginModel.Password).Result)
             {
                 throw new BadRequestException("Incorrect login or password");
             }
+            
+            var token = GenerateJwt(user);
+            return token;
         }
         
-        public void Logout()
-        {
-            _signInManager.SignOutAsync().Wait();
-        }
 
         public AvailableCurrencies ChangeRegionalСurrency(AvailableCurrencies currency)
         {
@@ -109,15 +105,16 @@ namespace WebStoreAPI.Services
                 {
                     errors += " " + error.Description;
                 }
-                throw  new Exception(errors);
+
+                throw new BadRequestException(errors);
             }
         }
-        
+
         public void SendConfirmationCode(string callbackUrl)
         {
             if (callbackUrl == null)
                 throw new BadRequestException("callbackUrl is null");
-            
+
             var htmlString = System.IO.File.ReadAllText("Views/ConfirmEmail.html");
             Template template = Template.Parse(htmlString);
             string message = template.Render(new {callback_url = callbackUrl});
@@ -125,13 +122,14 @@ namespace WebStoreAPI.Services
             var emailService = new EmailService(_configuration);
             emailService.SendEmail(User.Email, "Подтверждение почты", message);
         }
-        
+
         public IdentityResult ConfirmEmail(string userId, string code)
         {
             if (userId == null || code == null)
             {
                 throw new BadRequestException("user id or confirm code is null");
             }
+
             var user = _userManager.FindByIdAsync(userId).Result;
             if (user == null)
             {
@@ -150,9 +148,39 @@ namespace WebStoreAPI.Services
                 {
                     errors += " " + error.Description;
                 }
-                throw  new Exception(errors);
+
+                throw new Exception(errors);
             }
         }
-    
+        
+        private string GenerateJwt(User user)
+        {
+            JwtAuthenticationOptions jwtAuthenticationOptions = _jwtAuthOptions.Value;
+
+            SymmetricSecurityKey securityKey = jwtAuthenticationOptions.GetSymmetricSecurityKey();
+            var credentials = new SigningCredentials(securityKey, SecurityAlgorithms.HmacSha256);
+
+            var claims = new List<Claim>()
+            {
+                new Claim(JwtRegisteredClaimNames.Email, user.Email),
+                new Claim(JwtRegisteredClaimNames.Sub, user.Id)
+            };
+
+            IList<string> roles = _userManager.GetRolesAsync(user).Result;
+            foreach (var role in roles)
+            {
+                claims.Add(new Claim("role", role));
+            }
+
+            var token = new JwtSecurityToken(
+                jwtAuthenticationOptions.Issuer, 
+                jwtAuthenticationOptions.Audience, 
+                claims,
+                expires: DateTime.Now.AddMinutes(jwtAuthenticationOptions.TokenMinuteLifetime),
+                signingCredentials: credentials);
+
+            return new JwtSecurityTokenHandler().WriteToken(token);
+        }
+
     }
 }

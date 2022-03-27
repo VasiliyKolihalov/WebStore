@@ -14,12 +14,10 @@ namespace WebStoreAPI.Services
     public class ImageService
     {
         private readonly ApplicationContext _applicationDb;
-        private readonly UserManager<User> _userManager;
 
-        public ImageService(ApplicationContext applicationContext, UserManager<User> userManager)
+        public ImageService(ApplicationContext applicationContext)
         {
             _applicationDb = applicationContext;
-            _userManager = userManager;
         }
 
        public User User { private get; set; }

@@ -11,7 +11,6 @@ using WebStoreAPI.Services;
 
 namespace WebStoreAPI.Controllers
 {
-    [Authorize(Roles = ApplicationConstants.AdminRoleName)]
     [Route("api/[controller]")]
     [ApiController]
     public class TagsController : ControllerBase
@@ -37,6 +36,7 @@ namespace WebStoreAPI.Controllers
             return Ok(tagView);
         }
 
+        [Authorize(Roles = RolesConstants.AdminRoleName)]
         [HttpPost]
         public ActionResult<TagViewModel> Post(TagAddModel tagAddModel)
         {
@@ -47,6 +47,7 @@ namespace WebStoreAPI.Controllers
             return Ok(tagView);
         }
 
+        [Authorize(Roles = RolesConstants.AdminRoleName)]
         [HttpPut]
         public ActionResult<TagViewModel> Put(TagViewModel tagPutModel)
         {
@@ -57,6 +58,7 @@ namespace WebStoreAPI.Controllers
             return Ok(tagView);
         }
 
+        [Authorize(Roles = RolesConstants.AdminRoleName)]
         [HttpDelete("{tagId}")]
         public ActionResult<TagViewModel> Delete(int tagId)
         {
